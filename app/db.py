@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS devoirsfaits.exercices (
 CREATE TABLE IF NOT EXISTS devoirsfaits.conversations (
     id SERIAL PRIMARY KEY,
     eleve_id INTEGER NOT NULL REFERENCES devoirsfaits.eleves(id),
-    exercice_id INTEGER NOT NULL REFERENCES devoirsfaits.exercices(id),
+    exercice_id INTEGER REFERENCES devoirsfaits.exercices(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (eleve_id, exercice_id)
 );

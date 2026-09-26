@@ -1,0 +1,41 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath}
+\usepackage{askme}
+
+% Corrigé — fichier jamais distribué aux élèves.
+% Le CLI sync lit les environnements askmecorrection pour remplir la base :
+%   python cli/manage.py sync feuille.tex corrige.tex
+
+\begin{document}
+
+\begin{center}
+  {\Large \textsc{Corrigé — PGCD et fractions}}
+\end{center}
+
+\vspace{10pt}
+
+\begin{askmecorrection}{ex-pgcd-01}
+1) On décompose en facteurs premiers :
+$120 = 2^3 \times 3 \times 5$ et $84 = 2^2 \times 3 \times 7$.
+
+2) Le PGCD est le produit des facteurs premiers communs, affectés du plus
+petit exposant : $\mathrm{PGCD}(120, 84) = 2^2 \times 3 = 12$.
+
+3) On simplifie la fraction par le PGCD :
+$\dfrac{84}{120} = \dfrac{84 \div 12}{120 \div 12} = \dfrac{7}{10}$.
+\end{askmecorrection}
+
+\begin{askmecorrection}{ex-thales-01}
+1) Les droites $(BC)$ et $(DE)$ sont parallèles et les points $A$, $B$, $D$
+d'une part, $A$, $C$, $E$ d'autre part sont alignés dans le même ordre.
+D'après le théorème de Thalès : $\dfrac{AB}{AD} = \dfrac{AC}{AE}$.
+
+2) On remplace : $\dfrac{4}{6} = \dfrac{6}{AE}$.
+
+3) Donc $AE = \dfrac{6 \times 6}{4} = 9$. Le segment $[AE]$ mesure 9~cm.
+\end{askmecorrection}
+
+\end{document}

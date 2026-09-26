@@ -12,6 +12,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.db import get_db, init_db, query_one, query_db
 from app.security import hash_password
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from latex_extract import parse_tex_file
+
 
 def cmd_add_class(args):
     with get_db() as db:
@@ -114,6 +118,61 @@ def cmd_list_exercices(args):
     print(f"{'SLUG':<28} {'CLASSE':<8} TITRE")
     for r in rows:
         print(f"{r['slug']:<28} {r['classe']:<8} {r['titre']}")
+
+
+def cmd_sync(args):
+    """Synchronise les exercices depuis un ou plusieurs fichiers .tex."""
+    exercices: dict[str, dict] = {}
+    corrections: dict[str, str] = {}
+    for fichier in args.fichiers:
+        if not Path(fichier).exists():
+            sys.exit(f"Fichier introuvable : {fichier}")
+        exos, cors = parse_tex_file(fichier)
+        for exo in exos:
+            exercices[exo["slug"]] = exo
+        corrections.update(cors)
+
+    if not exercices and not corrections:
+        sys.exit("Aucun environnement askme/askmecorrection trouvé.")
+
+    created, updated = 0, 0
+    with get_db() as db:
+        for slug, exo in exercices.items():
+            classe = query_one(
+                "SELECT id FROM devoirsfaits.classes WHERE nom = %s", (exo["classe"],)
+            )
+            if not classe:
+                print(f"⚠ classe {exo['classe']} inconnue — exo {slug} ignoré (créez-la d'abord)")
+                continue
+            correction = corrections.get(slug, "")
+            existing = query_one(
+                "SELECT id FROM devoirsfaits.exercices WHERE slug = %s", (slug,)
+            )
+            if existing:
+                db.execute(
+                    "UPDATE devoirsfaits.exercices SET classe_id = %s, titre = %s, "
+                    "enonce = %s, correction = %s WHERE id = %s",
+                    (classe["id"], exo["titre"], exo["enonce"], correction, existing["id"]),
+                )
+                updated += 1
+            else:
+                db.execute(
+                    "INSERT INTO devoirsfaits.exercices (classe_id, slug, titre, enonce, correction) "
+                    "VALUES (%s, %s, %s, %s, %s)",
+                    (classe["id"], slug, exo["titre"], exo["enonce"], correction),
+                )
+                created += 1
+        for slug, correction in corrections.items():
+            if slug not in exercices:
+                existing = query_one(
+                    "SELECT id, correction FROM devoirsfaits.exercices WHERE slug = %s", (slug,)
+                )
+                if existing and not existing["correction"]:
+                    db.execute(
+                        "UPDATE devoirsfaits.exercices SET correction = %s WHERE id = %s",
+                        (correction, existing["id"]),
+                    )
+    print(f"Sync terminé : {created} créé(s), {updated} mis à jour.")
 
 
 def cmd_seed_demo(args):
@@ -225,6 +284,10 @@ def main():
 
     p = sub.add_parser("list-exercices", help="Lister les exercices")
     p.set_defaults(fn=cmd_list_exercices)
+
+    p = sub.add_parser("sync", help="Synchroniser les exercices depuis des fichiers .tex")
+    p.add_argument("fichiers", nargs="+", help="Fichiers .tex (feuille + corrigé)")
+    p.set_defaults(fn=cmd_sync)
 
     p = sub.add_parser("seed-demo", help="Données de démonstration")
     p.set_defaults(fn=cmd_seed_demo)

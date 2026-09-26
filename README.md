@@ -61,28 +61,51 @@ uvicorn app.main:app --reload
 
 ```bash
 python cli/manage.py add-class 3A --annee 2025-2026 --programme "Programme de 3A : ..."
-python cli/manage.py add-exercice 3A ex-pgcd-01 --titre "PGCD - Ex 1" \
-    --enonce "Déterminer le PGCD de 120 et 84." \
-    --correction "1) On décompose : 120 = 2³×3×5 ..."
+python cli/manage.py sync feuille.tex corrige.tex     # exercices depuis LaTeX
 python cli/manage.py add-student 3A Dupont Lucie --login lucie.d
-python cli/manage.py list-students 3A
+python cli/manage.py list-students
 ```
 
-## Workflow LaTeX
+## Workflow LaTeX (source unique, pas de double saisie)
+
+Les exercices sont écrits **une seule fois**, dans vos fichiers `.tex`. Le package `askme`
+insère l'icône cliquable, et le CLI synchronise les énoncés/corrections vers la base :
 
 ```latex
 \usepackage{askme}
+\askmesetup{assistant.mondomaine.fr}
 ...
-\begin{exercice}[PGCD - Ex 1]
-\askme{ex-pgcd-01}
-Déterminer le PGCD de 120 et 84.
-\end{exercice}
+% feuille élève
+\begin{askme}{ex-pgcd-01}{Exercice 1}{3A}
+Déterminer le PGCD de 120 et 84...
+\end{askme}
+
+% corrigé (fichier séparé, jamais distribué)
+\begin{askmecorrection}{ex-pgcd-01}
+1) On décompose : $120 = 2^3 \times 3 \times 5$...
+\end{askmecorrection}
 ```
 
-Le package place une petite icône 🧭 cliquable (hyperref) pointant vers
-`https://<votre-domaine>/e/ex-pgcd-01`. Seul le PDF publié sur votre site
-contient les liens ; la version distribuée sur papier ne permet évidemment pas
-de cliquer, mais le lien y est inerte donc sans effet de bord.
+```bash
+python cli/manage.py sync feuille.tex corrige.tex   # upsert énoncés + corrections
+```
+
+La conversion LaTeX → texte lisible (frac → a/b, `\times` → ×, etc.) est automatique.
+L'icône 🧭 du PDF pointe vers `/e/ex-pgcd-01` ; la correction n'existe **que** côté serveur —
+rien de sensible dans le PDF ou l'URL.
+
+## Mode exercice libre
+
+Si l'élève arrive sur l'assistant sans passer par une feuille (`/` → `/e/libre`),
+l'assistant lui demande de recopier ou photographier son énoncé, puis applique
+la même méthode socratique. Une conversation distincte est créée pour chaque session libre.
+
+## Garde-fous anti-détournement
+
+Le prompt système restreint strictement l'assistant aux maths : refus des sujets hors
+programme, des demandes de faire les devoirs à la place de l'élève, des manipulations
+de rôle ("ignore les consignes"), des contenus inappropriés ; orientation vers un adulte
+de confiance en cas d'évocation de danger.
 
 ## Variables d'environnement
 

@@ -80,10 +80,12 @@ votre base Scaleway :
 export DATABASE_URL="postgresql://user:pass@your-db.fr-par.scw.cloud:5432/mabase"
 python cli/manage.py add-class 3A --annee 2025-2026
 python cli/manage.py set-programme 3A --fichier programme-3A.txt
-python cli/manage.py add-exercice 3A ex-pgcd-01 \
-    --titre "PGCD - Ex 1" --fichier-enonce enonce.txt --fichier-correction correction.txt
+python cli/manage.py sync feuille.tex corrige.tex   # exercices + corrections depuis vos .tex
 python cli/manage.py add-student 3A Dupont Lucie --login lucie.d
 ```
+
+Workflow type à chaque nouvelle feuille : compiler le PDF (l'icône y est déjà),
+puis `sync` pour mettre à jour la base. Le `.tex` est la source unique.
 
 ## 4. LaTeX
 
@@ -93,12 +95,21 @@ Sur votre machine, copier `latex/askme.sty` à côté de votre feuille (ou dans 
 \usepackage{askme}
 \askmesetup{assistant.votredomaine.fr}
 ...
-\exercicetitre{Exercice 1 \askme{ex-pgcd-01}}
+\begin{askme}{ex-pgcd-01}{Exercice 1}{3A}
+Déterminer le PGCD de 120 et 84...
+\end{askme}
 ```
 
-Compiler avec `pdflatex` (fontawesome5 requis : `tlmgr install fontawesome5`).
+Compiler avec `pdflatex` puis synchroniser :
+
+```bash
+python cli/manage.py sync feuille.tex corrige.tex
+```
+
+Voir `latex/exemple.tex` et `latex/exemple-corrige.tex` pour un exemple complet.
 Le PDF publié sur votre site contient le symbole 🧭 cliquable ; la version papier
-ne l'est pas (lien inerte sur papier, sans effet).
+ne l'est pas (lien inerte sur papier, sans effet). La correction n'est jamais dans le PDF
+de l'élève ni dans l'URL — uniquement en base, côté serveur.
 
 ## 5. Vérifier
 

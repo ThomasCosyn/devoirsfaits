@@ -19,7 +19,21 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/heic", "image/webp"}
 MAX_IMAGE_BYTES = 12 * 1024 * 1024
 
 
+LIBRE_SLUG = "libre"
+
+
 def _get_exercice(slug: str):
+    if slug == LIBRE_SLUG:
+        return {
+            "id": None,
+            "classe_id": None,
+            "slug": LIBRE_SLUG,
+            "titre": "Exercice libre",
+            "enonce": "",
+            "correction": "",
+            "classe_nom": None,
+            "annee_scolaire": None,
+        }
     return query_one(
         """
         SELECT x.id, x.classe_id, x.slug, x.titre, x.enonce, x.correction,
@@ -31,16 +45,22 @@ def _get_exercice(slug: str):
     )
 
 
-def _get_or_create_conversation(db, eleve_id: int, exercice_id: int) -> int:
-    row = db.execute(
-        "SELECT id FROM devoirsfaits.conversations WHERE eleve_id = %s AND exercice_id = %s",
-        (eleve_id, exercice_id),
-    ).fetchone()
-    if row:
-        return row["id"]
+def _get_or_create_conversation(db, eleve_id: int, exercice_id: int | None) -> int:
+    if exercice_id is not None:
+        row = db.execute(
+            "SELECT id FROM devoirsfaits.conversations WHERE eleve_id = %s AND exercice_id = %s",
+            (eleve_id, exercice_id),
+        ).fetchone()
+        if row:
+            return row["id"]
+        cur = db.execute(
+            "INSERT INTO devoirsfaits.conversations (eleve_id, exercice_id) VALUES (%s, %s) RETURNING id",
+            (eleve_id, exercice_id),
+        )
+        return cur.fetchone()["id"]
     cur = db.execute(
-        "INSERT INTO devoirsfaits.conversations (eleve_id, exercice_id) VALUES (%s, %s) RETURNING id",
-        (eleve_id, exercice_id),
+        "INSERT INTO devoirsfaits.conversations (eleve_id) VALUES (%s) RETURNING id",
+        (eleve_id,),
     )
     return cur.fetchone()["id"]
 
@@ -70,6 +90,35 @@ def _sse_chunk(data: dict) -> str:
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+@router.get("/e/libre", response_class=HTMLResponse)
+async def exercice_libre_page(request: Request):
+    eleve = get_current_eleve(request)
+    if not eleve:
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {"next": "/e/libre", "error": None},
+        )
+    return templates.TemplateResponse(
+        request,
+        "chat.html",
+        {"eleve": dict(eleve), "exercice": {"titre": "Exercice libre", "slug": "libre", "enonce": ""}},
+    )
+
+
+@router.get("/", response_class=HTMLResponse)
+async def home_page(request: Request):
+    from fastapi.responses import RedirectResponse
+
+    if get_current_eleve(request):
+        return RedirectResponse("/e/libre", status_code=303)
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {"next": "/e/libre", "error": None},
+    )
+
+
 @router.get("/e/{slug}", response_class=HTMLResponse)
 async def exercice_page(request: Request, slug: str):
     eleve = get_current_eleve(request)
@@ -97,7 +146,7 @@ async def chat_history(request: Request, slug: str):
     exercice = _get_exercice(slug)
     if not exercice:
         raise HTTPException(status_code=404, detail="Exercice inconnu")
-    if exercice["classe_id"] != eleve["classe_id"]:
+    if exercice["classe_id"] is not None and exercice["classe_id"] != eleve["classe_id"]:
         raise HTTPException(status_code=403, detail="Exercice d'une autre classe")
 
     with get_db() as db:
@@ -124,7 +173,7 @@ async def chat_endpoint(
     exercice = _get_exercice(slug)
     if not exercice:
         raise HTTPException(status_code=404, detail="Exercice inconnu")
-    if exercice["classe_id"] != eleve["classe_id"]:
+    if exercice["classe_id"] is not None and exercice["classe_id"] != eleve["classe_id"]:
         raise HTTPException(status_code=403, detail="Exercice d'une autre classe")
 
     message = (message or "").strip()
@@ -169,7 +218,7 @@ async def chat_endpoint(
 
         session_id = f"conv-{conv_id}"
         user_id = f"eleve-{eleve['id']}-{eleve['login']}"
-        tags = ["devoirsfaits", ex_dict["classe_nom"], exercice["slug"]]
+        tags = ["devoirsfaits", ex_dict["classe_nom"] or "libre", exercice["slug"]]
         metadata = {
             "eleve": f"{eleve['prenom']} {eleve['nom']}",
             "classe": ex_dict["classe_nom"],

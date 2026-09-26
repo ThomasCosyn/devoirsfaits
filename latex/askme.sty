@@ -1,35 +1,60 @@
-% askme.sty — Insère un petit symbole cliquable vers l'assistant "Devoirs Faits"
-% Usage :
-%   \usepackage{askme}
-%   ...
-%   \askme{ex-pgcd-01}
+% askme.sty — Insère un petit symbole cliquable vers l'assistant "Devoirs Faits".
 %
-% Le symbole (🧭 boussole) pointe vers https://<ASKME_URL>/e/<slug>.
-% Configurez l'URL de votre instance via :
+% Les énoncés et corrections sont extraits des fichiers .tex par le CLI :
+%   python cli/manage.py sync feuille.tex corrige.tex
+% (le .tex est la source unique, pas de double saisie)
+%
+% Usage dans la feuille élève :
+%   \usepackage{askme}
 %   \askmesetup{assistant.mondomaine.fr}
-% ou la commande \askmesetup avant \begin{document}.
+%   ...
+%   \begin{askme}{ex-pgcd-01}{PGCD - Exercice 1}{3A}
+%   Déterminer le PGCD de 120 et 84. En déduire la forme irréductible
+%   de la fraction $\frac{84}{120}$.
+%   \end{askme}
+%
+% Usage dans le corrigé (fichier séparé, jamais distribué) :
+%   \begin{askmecorrection}{ex-pgcd-01}
+%   1) On décompose : $120 = 2^3 \times 3 \times 5$...
+%   \end{askmecorrection}
 
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{askme}[2026/01/15 v1.0 Devoirs Faits clickable helper]
+\ProvidesPackage{askme}[2026/01/15 v2.0 Devoirs Faits clickable helper]
 
 \RequirePackage{hyperref}
 \RequirePackage{xcolor}
-\RequirePackage{fontawesome5}
 
-% Domaine de l'assistant (sans https://), configurable
+% Domaine de l'assistant (sans https://)
 \newcommand{\askme@domain}{assistant.mondomaine.fr}
 \newcommand{\askmesetup}[1]{\renewcommand{\askme@domain}{#1}}
 
-% Icône : petite boussole (life-ring ou compass de fontawesome)
-\newcommand{\askme@icon}{{\small\color{teal}\faIcon{compass}}}
-
-% Lien cliquable discret, aligné sur la ligne
-\newcommand{\askme}[1]{%
-  \href{https://\askme@domain/e/#1}{\askme@icon}%
+% Icône cliquable : boussole teal si fontawesome5 est chargé, sinon astérisque
+\newcommand{\askme@icon}{%
+  \@ifpackageloaded{fontawesome5}{{\small\color{teal}\faIcon{compass}}}%
+  {{\small\color{teal}$\ast$}}%
 }
 
-% Variante avec marge à droite de l'énoncé (à utiliser dans un environnement
-% qui autorise le mode horizontal)
-\newcommand{\askmemargin}[2]{%
-  \marginnote{\href{https://\askme@domain/e/#2}{\askme@icon}}%
+% Environnement exercice : titre + icône cliquable, puis le corps (l'énoncé)
+% #1 = slug (identifiant unique de l'exercice dans la base)
+% #2 = titre affiché
+% #3 = classe
+\newenvironment{askme}[3]{%
+  \par\vspace{8pt}%
+  \noindent\textbf{\textsc{#2}}\hfill\href{https://\askme@domain/e/#1}{\askme@icon}%
+  \par\vspace{3pt}%
+  \noindent\ignorespaces
+}{%
+  \par\vspace{8pt}%
 }
+
+% Environnement correction (fichier corrigé) : affiche le texte de la correction
+% #1 = slug de l'exercice correspondant
+\newenvironment{askmecorrection}[1]{%
+  \par\vspace{8pt}%
+  \noindent\textbf{\textsc{Correction (#1)}}\par\vspace{3pt}%
+  \noindent\ignorespaces
+}{%
+  \par\vspace{8pt}%
+}
+
+\endinput
