@@ -51,11 +51,13 @@ docs/
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env            # renseigner DATABASE_URL, MISTRAL_API_KEY, LANGFUSE_PK/SK
-export $(grep -v '^#' .env | xargs)
-python cli/manage.py seed-demo  # données de démo (2 classes, 3 élèves, exercices)
+python cli/manage.py seed-demo  # données de démo (le .env est chargé automatiquement)
 uvicorn app.main:app --reload
 # → http://localhost:8000
 ```
+
+Le fichier `.env` est chargé automatiquement par l'application et le CLI
+(python-dotenv) — pas besoin de l'exporter dans le shell.
 
 ## CLI enseignant
 

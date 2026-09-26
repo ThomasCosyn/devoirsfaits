@@ -3,7 +3,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+if load_dotenv is not None:
+    load_dotenv(BASE_DIR / ".env")
 
 
 def _env(name: str, default: str = "") -> str:
