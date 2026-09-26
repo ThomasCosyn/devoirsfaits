@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Data
+data/
+*.db
+*.db-journal
+
+# Env & secrets
+.env
+.env.local
+
+# LaTeX
+*.aux
+*.log
+*.out
+*.pdf
+*.synctex.gz
+!docs/assets/*.pdf
+
+# OS/IDE
+.DS_Store
+.idea/
+.vscode/

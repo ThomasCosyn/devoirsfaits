@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>{{ exercice.titre }} — Devoirs Faits</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="chat-body">
+<header class="chat-header">
+  <div class="chat-header-info">
+    <strong>{{ exercice.titre }}</strong>
+    <span>{{ eleve.prenom }} · {{ eleve.classe_nom }}</span>
+  </div>
+  <a href="/logout" class="logout" title="Se déconnecter">⏻</a>
+</header>
+
+<main id="chat" class="chat-messages" aria-live="polite"></main>
+
+<div id="typing" class="typing hidden" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<div id="quickstart" class="quickstart hidden">
+  <button data-msg="Je ne comprends pas l'énoncé">Je ne comprends pas l'énoncé</button>
+  <button data-msg="Je suis bloqué à une étape">Je suis bloqué à une étape</button>
+</div>
+
+<form id="chat-form" class="chat-input" autocomplete="off">
+  <input type="text" id="msg" name="message" placeholder="Écris ta question…" enterkeyhint="send">
+  <label class="photo-btn" title="Envoyer une photo de ton cahier">
+    <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" capture="environment">
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4"/><path fill="currentColor" d="M9 2 7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2zm3 15.2A5.2 5.2 0 1 1 12 6.8a5.2 5.2 0 0 1 0 10.4"/></svg>
+  </label>
+  <button type="submit" id="send" aria-label="Envoyer">
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M2 21 23 12 2 3v7l15 2-15 2z"/></svg>
+  </button>
+</form>
+<div id="photo-name" class="photo-name hidden"></div>
+
+<script src="/static/chat.js"></script>
+</body>
+</html>

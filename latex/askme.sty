@@ -1,0 +1,35 @@
+% askme.sty — Insère un petit symbole cliquable vers l'assistant "Devoirs Faits"
+% Usage :
+%   \usepackage{askme}
+%   ...
+%   \askme{ex-pgcd-01}
+%
+% Le symbole (🧭 boussole) pointe vers https://<ASKME_URL>/e/<slug>.
+% Configurez l'URL de votre instance via :
+%   \askmesetup{assistant.mondomaine.fr}
+% ou la commande \askmesetup avant \begin{document}.
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{askme}[2026/01/15 v1.0 Devoirs Faits clickable helper]
+
+\RequirePackage{hyperref}
+\RequirePackage{xcolor}
+\RequirePackage{fontawesome5}
+
+% Domaine de l'assistant (sans https://), configurable
+\newcommand{\askme@domain}{assistant.mondomaine.fr}
+\newcommand{\askmesetup}[1]{\renewcommand{\askme@domain}{#1}}
+
+% Icône : petite boussole (life-ring ou compass de fontawesome)
+\newcommand{\askme@icon}{{\small\color{teal}\faIcon{compass}}}
+
+% Lien cliquable discret, aligné sur la ligne
+\newcommand{\askme}[1]{%
+  \href{https://\askme@domain/e/#1}{\askme@icon}%
+}
+
+% Variante avec marge à droite de l'énoncé (à utiliser dans un environnement
+% qui autorise le mode horizontal)
+\newcommand{\askmemargin}[2]{%
+  \marginnote{\href{https://\askme@domain/e/#2}{\askme@icon}}%
+}

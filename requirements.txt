@@ -1,0 +1,11 @@
+fastapi>=0.115
+uvicorn[standard]>=0.32
+jinja2>=3.1
+python-multipart>=0.0.12
+itsdangerous>=2.2
+bcrypt>=4.2
+httpx>=0.27
+openai>=1.60
+langfuse>=4.0
+pillow>=10.4
+psycopg[binary,pool]>=3.2

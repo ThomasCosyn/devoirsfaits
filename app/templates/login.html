@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Devoirs Faits — Connexion</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="center-body">
+<main class="card">
+  <div class="logo">🧭</div>
+  <h1>Devoirs Faits</h1>
+  <p class="subtitle">Ton assistant pour t'aider sur les exercices.</p>
+  {% if exercice_titre %}<p class="hint">Exercice : <strong>{{ exercice_titre }}</strong></p>{% endif %}
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="login">Identifiant</label>
+    <input type="text" id="login" name="login_name" autocomplete="username" required autofocus>
+    <label for="password">Mot de passe</label>
+    <input type="password" id="password" name="password" autocomplete="current-password" required>
+    <button type="submit">Se connecter</button>
+  </form>
+</main>
+</body>
+</html>
