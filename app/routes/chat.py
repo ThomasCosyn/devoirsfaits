@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import uuid
@@ -310,8 +311,11 @@ async def chat_endpoint(
         ex_dict = dict(exercice)
         context_block = build_context_block(eleve_dict, ex_dict)
 
-        session_id = f"conv-{conv_id}"
-        user_id = f"eleve-{eleve['id']}-{eleve['login']}"
+        session_hash = hashlib.sha256(
+            f"{eleve['login']}:{conv_id}".encode()
+        ).hexdigest()[:12]
+        session_id = f"conv-{session_hash}"
+        user_id = eleve["login"]
         tags = ["devoirsfaits", ex_dict["classe_nom"] or "libre", exercice["slug"]]
         metadata = {
             "eleve": f"{eleve['prenom']} {eleve['nom']}",
