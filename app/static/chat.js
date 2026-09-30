@@ -4,7 +4,6 @@
   const input = document.getElementById("msg");
   const photoInput = document.getElementById("photo");
   const sendBtn = document.getElementById("send");
-  const typing = document.getElementById("typing");
   const quickstart = document.getElementById("quickstart");
   const photoRemove = document.getElementById("photo-remove");
   const photoPreview = document.getElementById("photo-preview");
@@ -20,6 +19,23 @@
     chat.scrollTop = chat.scrollHeight;
   });
 
+  function renderRich(el, text) {
+    el.innerHTML = marked.parse(text);
+    el.querySelectorAll("p").forEach((p) => {
+      if (!p.textContent.trim()) p.remove();
+    });
+    if (window.renderMathInElement) {
+      window.renderMathInElement(el, {
+        delimiters: [
+          { left: "$$", right: "$$", display: true },
+          { left: "\\(", right: "\\)", display: false },
+          { left: "$", right: "$", display: false },
+        ],
+        throwOnError: false,
+      });
+    }
+  }
+
   function addMsg(role, text, imageUrl) {
     const div = document.createElement("div");
     div.className = "msg " + (role === "user" ? "user" : "bot");
@@ -30,10 +46,17 @@
       thumb.alt = "photo du cahier";
       div.appendChild(thumb);
     }
-    div.appendChild(document.createTextNode(text));
+    const body = document.createElement("div");
+    body.className = "msg-body";
+    if (role === "bot") {
+      renderRich(body, text);
+    } else {
+      body.textContent = text;
+    }
+    div.appendChild(body);
     chat.appendChild(div);
     scrollBottom();
-    return div;
+    return body;
   }
 
   async function loadHistory() {
@@ -53,12 +76,30 @@
     }
   }
 
+  let typingEl = null;
+
+  function showTyping() {
+    hideTyping();
+    typingEl = document.createElement("div");
+    typingEl.className = "typing";
+    typingEl.innerHTML = "<span></span><span></span><span></span>";
+    chat.appendChild(typingEl);
+    scrollBottom();
+  }
+
+  function hideTyping() {
+    if (typingEl) {
+      typingEl.remove();
+      typingEl = null;
+    }
+  }
+
   function setBusy(state) {
     busy = state;
     sendBtn.disabled = state;
     input.disabled = state;
     photoInput.disabled = state;
-    typing.classList.toggle("hidden", !state);
+    if (state) showTyping(); else hideTyping();
     if (!state) scrollBottom();
   }
 
@@ -72,7 +113,7 @@
     fd.append("message", message || "");
     if (photoFile) fd.append("image", photoFile);
 
-    const botDiv = addMsg("bot", "");
+    const botBody = addMsg("bot", "");
     let botText = "";
 
     try {
@@ -97,20 +138,20 @@
             const ev = JSON.parse(raw.slice(6));
             if (ev.type === "token") {
               botText += ev.content;
-              botDiv.textContent = botText;
+              renderRich(botBody, botText);
               scrollBottom();
             } else if (ev.type === "done") {
               botText = ev.content || botText;
-              botDiv.textContent = botText;
+              renderRich(botBody, botText);
             } else if (ev.type === "error") {
-              botDiv.textContent = ev.content;
-              botDiv.classList.add("error-line");
+              botBody.textContent = ev.content;
+              botBody.classList.add("error-line");
             }
           } catch { /* chunk partiel */ }
         }
       }
     } catch {
-      if (!botText) botDiv.textContent = "Erreur de connexion. Réessaie dans un instant.";
+      if (!botText) botBody.textContent = "Erreur de connexion. Réessaie dans un instant.";
     } finally {
       setBusy(false);
       pendingPhoto = null;

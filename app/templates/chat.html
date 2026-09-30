@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>{{ exercice.titre }} — Devoirs Faits</title>
 <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 </head>
 <body class="chat-body">
 <header class="chat-header">
@@ -20,7 +24,7 @@
 
 <main id="chat" class="chat-messages" aria-live="polite"></main>
 
-<div id="typing" class="typing hidden" aria-hidden="true"><span></span><span></span><span></span></div>
+
 
 <div id="quickstart" class="quickstart hidden">
   <button data-msg="Je ne comprends pas l'énoncé">Je ne comprends pas l'énoncé</button>
