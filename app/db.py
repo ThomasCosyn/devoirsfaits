@@ -64,17 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON devoirsfaits.messages (c
 
 _MIGRATIONS = (
     """
-    DO $$ BEGIN
-        IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_schema = 'devoirsfaits'
-              AND table_name = 'conversations'
-              AND column_name = 'exercice_id'
-              AND is_nullable = 'NO'
-        ) THEN
-            EXECUTE 'ALTER TABLE devoirsfaits.conversations ALTER COLUMN exercice_id DROP NOT NULL';
-        END IF;
-    END $$;
+    ALTER TABLE devoirsfaits.conversations ALTER COLUMN exercice_id DROP NOT NULL;
     """,
 )
 
