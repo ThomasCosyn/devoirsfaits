@@ -3,13 +3,15 @@
   const form = document.getElementById("chat-form");
   const input = document.getElementById("msg");
   const photoInput = document.getElementById("photo");
-  const photoName = document.getElementById("photo-name");
   const sendBtn = document.getElementById("send");
   const typing = document.getElementById("typing");
   const quickstart = document.getElementById("quickstart");
   const photoRemove = document.getElementById("photo-remove");
-  const photoNameText = document.getElementById("photo-name-text");
+  const photoPreview = document.getElementById("photo-preview");
+  const photoPreviewImg = document.getElementById("photo-preview-img");
   const slug = location.pathname.split("/").pop();
+
+  let photoObjectUrl = null;
 
   let pendingPhoto = null;
   let busy = false;
@@ -18,14 +20,15 @@
     chat.scrollTop = chat.scrollHeight;
   });
 
-  function addMsg(role, text, withPhoto) {
+  function addMsg(role, text, imageUrl) {
     const div = document.createElement("div");
     div.className = "msg " + (role === "user" ? "user" : "bot");
-    if (withPhoto) {
-      const flag = document.createElement("span");
-      flag.className = "photo-flag";
-      flag.textContent = "📷 photo du cahier";
-      div.appendChild(flag);
+    if (imageUrl) {
+      const thumb = document.createElement("img");
+      thumb.className = "msg-photo";
+      thumb.src = imageUrl;
+      thumb.alt = "photo du cahier";
+      div.appendChild(thumb);
     }
     div.appendChild(document.createTextNode(text));
     chat.appendChild(div);
@@ -39,7 +42,10 @@
       if (!res.ok) throw new Error();
       const data = await res.json();
       for (const m of data.messages) {
-        addMsg(m.role, m.content, false);
+        const url = m.has_image && m.id
+          ? `/api/chat/${slug}/image/${m.id}`
+          : null;
+        addMsg(m.role, m.content, url);
       }
       if (data.messages.length === 0) quickstart.classList.remove("hidden");
     } catch {
@@ -59,7 +65,7 @@
   async function send(message, photoFile) {
     if (busy) return;
     setBusy(true);
-    addMsg("user", message || "Voici une photo de mon cahier.", !!photoFile);
+    addMsg("user", message || "Voici une photo de mon cahier.", photoObjectUrl);
     quickstart.classList.add("hidden");
 
     const fd = new FormData();
@@ -109,8 +115,12 @@
       setBusy(false);
       pendingPhoto = null;
       photoInput.value = "";
-      photoNameText.textContent = "";
-      photoName.classList.add("hidden");
+      if (photoObjectUrl) {
+        URL.revokeObjectURL(photoObjectUrl);
+        photoObjectUrl = null;
+      }
+      photoPreviewImg.src = "";
+      photoPreview.classList.add("hidden");
       input.value = "";
       autoResize();
       input.focus();
@@ -147,18 +157,21 @@
   function setPendingPhoto(file) {
     if (!file || !file.type.startsWith("image/")) return;
     pendingPhoto = file;
-    const label = file.name && file.name !== "image.png"
-      ? file.name
-      : "capture d'écran";
-    photoNameText.textContent = "📷 " + label + " — prête à envoyer";
-    photoName.classList.remove("hidden");
+    if (photoObjectUrl) URL.revokeObjectURL(photoObjectUrl);
+    photoObjectUrl = URL.createObjectURL(file);
+    photoPreviewImg.src = photoObjectUrl;
+    photoPreview.classList.remove("hidden");
   }
 
   function clearPendingPhoto() {
     pendingPhoto = null;
     photoInput.value = "";
-    photoNameText.textContent = "";
-    photoName.classList.add("hidden");
+    if (photoObjectUrl) {
+      URL.revokeObjectURL(photoObjectUrl);
+      photoObjectUrl = null;
+    }
+    photoPreviewImg.src = "";
+    photoPreview.classList.add("hidden");
   }
 
   photoRemove.addEventListener("click", clearPendingPhoto);

@@ -4,7 +4,7 @@ import json
 import uuid
 
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from app.db import get_db, query_one, init_db
@@ -67,12 +67,12 @@ def _get_or_create_conversation(db, eleve_id: int, exercice_id: int | None) -> i
 
 def _load_history(db, conversation_id: int) -> list[dict]:
     rows = db.execute(
-        "SELECT role, content, (image IS NOT NULL) AS has_image "
+        "SELECT id, role, content, (image IS NOT NULL) AS has_image "
         "FROM devoirsfaits.messages WHERE conversation_id = %s ORDER BY id",
         (conversation_id,),
     ).fetchall()
     return [
-        {"role": r["role"], "content": r["content"], "has_image": r["has_image"]}
+        {"id": r["id"], "role": r["role"], "content": r["content"], "has_image": r["has_image"]}
         for r in rows
     ]
 
@@ -160,6 +160,28 @@ async def chat_history(request: Request, slug: str):
     })
 
 
+@router.get("/api/chat/{slug}/image/{message_id}")
+async def chat_image(request: Request, slug: str, message_id: int):
+    eleve = get_current_eleve(request)
+    if not eleve:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    exercice = _get_exercice(slug)
+    if not exercice:
+        raise HTTPException(status_code=404, detail="Exercice inconnu")
+    with get_db() as db:
+        row = db.execute(
+            """
+            SELECT m.image FROM devoirsfaits.messages m
+            JOIN devoirsfaits.conversations c ON c.id = m.conversation_id
+            WHERE m.id = %s AND c.eleve_id = %s AND m.image IS NOT NULL
+            """,
+            (message_id, eleve["id"]),
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Image introuvable")
+    return Response(content=row["image"], media_type="image/jpeg")
+
+
 @router.post("/api/chat/{slug}")
 async def chat_endpoint(
     request: Request,
@@ -205,11 +227,13 @@ async def chat_endpoint(
 
     init_db()
 
+    user_content = message or "Voici une photo de mon cahier."
     with get_db() as db:
         conv_id = _get_or_create_conversation(db, eleve["id"], exercice["id"])
         history = _load_history(db, conv_id)
-        _save_message(
-            db, conv_id, "user", message or "Voici une photo de mon cahier.", stored_image
+        _save_message(db, conv_id, "user", user_content, stored_image)
+        history.append(
+            {"role": "user", "content": user_content, "has_image": image_dataurl is not None}
         )
 
         eleve_dict = dict(eleve)

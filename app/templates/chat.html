@@ -25,6 +25,10 @@
 </div>
 
 <form id="chat-form" class="chat-input" autocomplete="off">
+  <div id="photo-preview" class="photo-preview hidden">
+    <img id="photo-preview-img" alt="Image prête à envoyer">
+    <button type="button" id="photo-remove" class="photo-remove" aria-label="Supprimer l'image">✕</button>
+  </div>
   <div class="composer">
     <textarea id="msg" name="message" rows="1" placeholder="Écris ta question…" enterkeyhint="send"></textarea>
     <div class="composer-actions">
@@ -38,7 +42,6 @@
     </div>
   </div>
 </form>
-<div id="photo-name" class="photo-name hidden">  <span id="photo-name-text"></span>  <button type="button" id="photo-remove" class="photo-remove" aria-label="Supprimer l'image">✕</button></div>
 
 <script src="/static/chat.js"></script>
 </body>
