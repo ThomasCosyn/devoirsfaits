@@ -74,12 +74,18 @@ def _get_or_create_conversation(db, eleve_id: int, exercice_id: int | None) -> i
 
 def _load_history(db, conversation_id: int) -> list[dict]:
     rows = db.execute(
-        "SELECT id, role, content, (image IS NOT NULL) AS has_image "
+        "SELECT id, role, content, (image IS NOT NULL) AS has_image, image_transcript "
         "FROM devoirsfaits.messages WHERE conversation_id = %s ORDER BY id",
         (conversation_id,),
     ).fetchall()
     return [
-        {"id": r["id"], "role": r["role"], "content": r["content"], "has_image": r["has_image"]}
+        {
+            "id": r["id"],
+            "role": r["role"],
+            "content": r["content"],
+            "has_image": r["has_image"],
+            "image_transcript": r["image_transcript"],
+        }
         for r in rows
     ]
 
