@@ -122,9 +122,34 @@
 
   photoInput.addEventListener("change", () => {
     if (photoInput.files.length) {
-      pendingPhoto = photoInput.files[0];
-      photoName.textContent = "📷 " + pendingPhoto.name + " — prête à envoyer";
-      photoName.classList.remove("hidden");
+      setPendingPhoto(photoInput.files[0]);
+    }
+  });
+
+  function setPendingPhoto(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    pendingPhoto = file;
+    const label = file.name && file.name !== "image.png"
+      ? file.name
+      : "capture d'écran";
+    photoName.textContent = "📷 " + label + " — prête à envoyer";
+    photoName.classList.remove("hidden");
+  }
+
+  document.addEventListener("paste", (e) => {
+    if (busy) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          e.preventDefault();
+          setPendingPhoto(file);
+          input.focus();
+        }
+        return;
+      }
     }
   });
 
