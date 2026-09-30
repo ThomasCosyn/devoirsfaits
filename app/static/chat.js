@@ -105,8 +105,8 @@
 
   async function send(message, photoFile) {
     if (busy) return;
-    setBusy(true);
     addMsg("user", message || "Voici une photo de mon cahier.", photoObjectUrl);
+    setBusy(true);
     quickstart.classList.add("hidden");
 
     const fd = new FormData();
