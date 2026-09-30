@@ -1,14 +1,22 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import logging
 import uuid
 
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
+from app.config import settings
 from app.db import get_db, query_one, init_db
-from app.llm import build_context_block, compress_image_to_dataurl, stream_chat
+from app.llm import (
+    build_context_block,
+    compress_image_to_dataurl,
+    stream_chat,
+    transcribe_image,
+)
 from app.routes.auth import get_current_eleve
 
 router = APIRouter()
@@ -58,6 +66,13 @@ def _get_or_create_conversation(db, eleve_id: int, exercice_id: int | None) -> i
             (eleve_id, exercice_id),
         )
         return cur.fetchone()["id"]
+    row = db.execute(
+        "SELECT id FROM devoirsfaits.conversations "
+        "WHERE eleve_id = %s AND exercice_id IS NULL ORDER BY id DESC LIMIT 1",
+        (eleve_id,),
+    ).fetchone()
+    if row:
+        return row["id"]
     cur = db.execute(
         "INSERT INTO devoirsfaits.conversations (eleve_id) VALUES (%s) RETURNING id",
         (eleve_id,),
@@ -67,22 +82,35 @@ def _get_or_create_conversation(db, eleve_id: int, exercice_id: int | None) -> i
 
 def _load_history(db, conversation_id: int) -> list[dict]:
     rows = db.execute(
-        "SELECT role, content, (image IS NOT NULL) AS has_image "
+        "SELECT id, role, content, (image IS NOT NULL) AS has_image, image_transcript "
         "FROM devoirsfaits.messages WHERE conversation_id = %s ORDER BY id",
         (conversation_id,),
     ).fetchall()
     return [
-        {"role": r["role"], "content": r["content"], "has_image": r["has_image"]}
+        {
+            "id": r["id"],
+            "role": r["role"],
+            "content": r["content"],
+            "has_image": r["has_image"],
+            "image_transcript": r["image_transcript"],
+        }
         for r in rows
     ]
 
 
 def _save_message(
-    db, conversation_id: int, role: str, content: str, image: bytes | None = None
+    db,
+    conversation_id: int,
+    role: str,
+    content: str,
+    image: bytes | None = None,
+    image_transcript: str | None = None,
 ) -> None:
     db.execute(
-        "INSERT INTO devoirsfaits.messages (conversation_id, role, content, image) VALUES (%s, %s, %s, %s)",
-        (conversation_id, role, content, image),
+        "INSERT INTO devoirsfaits.messages "
+        "(conversation_id, role, content, image, image_transcript) "
+        "VALUES (%s, %s, %s, %s, %s)",
+        (conversation_id, role, content, image, image_transcript),
     )
 
 
@@ -138,6 +166,37 @@ async def exercice_page(request: Request, slug: str):
     )
 
 
+@router.post("/api/chat/{slug}/reset")
+async def chat_reset(request: Request, slug: str):
+    eleve = get_current_eleve(request)
+    if not eleve:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    exercice = _get_exercice(slug)
+    if not exercice:
+        raise HTTPException(status_code=404, detail="Exercice inconnu")
+    if exercice["classe_id"] is not None and exercice["classe_id"] != eleve["classe_id"]:
+        raise HTTPException(status_code=403, detail="Exercice d'une autre classe")
+    with get_db() as db:
+        db.execute(
+            """
+            DELETE FROM devoirsfaits.messages
+            WHERE conversation_id IN (
+                SELECT id FROM devoirsfaits.conversations
+                WHERE eleve_id = %s AND exercice_id IS NOT DISTINCT FROM %s
+            )
+            """,
+            (eleve["id"], exercice["id"]),
+        )
+        db.execute(
+            """
+            DELETE FROM devoirsfaits.conversations
+            WHERE eleve_id = %s AND exercice_id IS NOT DISTINCT FROM %s
+            """,
+            (eleve["id"], exercice["id"]),
+        )
+    return JSONResponse({"ok": True})
+
+
 @router.get("/api/chat/{slug}/history")
 async def chat_history(request: Request, slug: str):
     eleve = get_current_eleve(request)
@@ -158,6 +217,28 @@ async def chat_history(request: Request, slug: str):
         "eleve": {"prenom": eleve["prenom"], "nom": eleve["nom"]},
         "messages": history,
     })
+
+
+@router.get("/api/chat/{slug}/image/{message_id}")
+async def chat_image(request: Request, slug: str, message_id: int):
+    eleve = get_current_eleve(request)
+    if not eleve:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    exercice = _get_exercice(slug)
+    if not exercice:
+        raise HTTPException(status_code=404, detail="Exercice inconnu")
+    with get_db() as db:
+        row = db.execute(
+            """
+            SELECT m.image FROM devoirsfaits.messages m
+            JOIN devoirsfaits.conversations c ON c.id = m.conversation_id
+            WHERE m.id = %s AND c.eleve_id = %s AND m.image IS NOT NULL
+            """,
+            (message_id, eleve["id"]),
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Image introuvable")
+    return Response(content=row["image"], media_type="image/jpeg")
 
 
 @router.post("/api/chat/{slug}")
@@ -194,6 +275,7 @@ async def chat_endpoint(
 
     image_dataurl = None
     stored_image: bytes | None = None
+    image_transcript = None
     if image_bytes:
         try:
             image_dataurl = compress_image_to_dataurl(image_bytes)
@@ -202,22 +284,43 @@ async def chat_endpoint(
         import base64
 
         stored_image = base64.b64decode(image_dataurl.split(",", 1)[1])
+        try:
+            image_transcript = await transcribe_image(image_dataurl)
+        except Exception:
+            logging.getLogger("devoirsfaits").exception(
+                "Transcription d'image échouée (modèle=%s)", settings.MISTRAL_MODEL
+            )
+            image_transcript = None
+        if not image_transcript:
+            image_transcript = "(Photo envoyée mais transcription indisponible.)"
 
     init_db()
 
+    user_content = message or "Voici une photo de mon cahier."
     with get_db() as db:
         conv_id = _get_or_create_conversation(db, eleve["id"], exercice["id"])
         history = _load_history(db, conv_id)
         _save_message(
-            db, conv_id, "user", message or "Voici une photo de mon cahier.", stored_image
+            db, conv_id, "user", user_content, stored_image, image_transcript
+        )
+        history.append(
+            {
+                "role": "user",
+                "content": user_content,
+                "has_image": image_dataurl is not None,
+                "image_transcript": image_transcript,
+            }
         )
 
         eleve_dict = dict(eleve)
         ex_dict = dict(exercice)
         context_block = build_context_block(eleve_dict, ex_dict)
 
-        session_id = f"conv-{conv_id}"
-        user_id = f"eleve-{eleve['id']}-{eleve['login']}"
+        session_hash = hashlib.sha256(
+            f"{eleve['login']}:{conv_id}".encode()
+        ).hexdigest()[:12]
+        session_id = f"conv-{session_hash}"
+        user_id = eleve["login"]
         tags = ["devoirsfaits", ex_dict["classe_nom"] or "libre", exercice["slug"]]
         metadata = {
             "eleve": f"{eleve['prenom']} {eleve['nom']}",
