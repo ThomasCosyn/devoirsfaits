@@ -11,7 +11,12 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import settings
 from app.db import get_db, query_one, init_db
-from app.llm import build_context_block, compress_image_to_dataurl, stream_chat
+from app.llm import (
+    build_context_block,
+    compress_image_to_dataurl,
+    stream_chat,
+    transcribe_image,
+)
 from app.routes.auth import get_current_eleve
 
 router = APIRouter()
