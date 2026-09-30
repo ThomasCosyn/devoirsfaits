@@ -150,6 +150,34 @@ def compress_image_to_dataurl(image_bytes: bytes) -> str:
     return f"data:image/jpeg;base64,{b64}"
 
 
+async def transcribe_image(image_dataurl: str) -> str:
+    client = get_client()
+    response = await client.chat.completions.create(
+        model=settings.MISTRAL_MODEL,
+        max_tokens=600,
+        temperature=0,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "Transcris fidèlement et intégralement tout ce qui est visible dans "
+                            "cette image d'un exercice de mathématiques : énoncé complet, calculs, "
+                            "fractions, schémas (décris-les), numéros d'exercice. "
+                            "Utilise le format LaTeX pour les mathématiques (entre $...$). "
+                            "Réponds uniquement avec la transcription, sans commentaire."
+                        ),
+                    },
+                    {"type": "image_url", "image_url": {"url": image_dataurl}},
+                ],
+            }
+        ],
+    )
+    return (response.choices[0].message.content or "").strip()
+
+
 async def stream_chat(
     messages_history: list[dict[str, Any]],
     context_block: str,
@@ -166,7 +194,11 @@ async def stream_chat(
         {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context_block}
     ]
     for m in messages_history:
-        api_messages.append({"role": m["role"], "content": m["content"]})
+        content = m["content"]
+        transcript = m.get("image_transcript")
+        if transcript and m.get("has_image"):
+            content = f"{content}\n\n[Photo du cahier — transcription : {transcript}]"
+        api_messages.append({"role": m["role"], "content": content})
 
     last = api_messages[-1] if api_messages else None
     if image_dataurl and last and last["role"] == "user":

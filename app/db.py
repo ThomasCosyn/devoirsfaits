@@ -65,6 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON devoirsfaits.messages (c
 _MIGRATIONS = (
     """
     ALTER TABLE devoirsfaits.conversations ALTER COLUMN exercice_id DROP NOT NULL;
+    ALTER TABLE devoirsfaits.messages ADD COLUMN IF NOT EXISTS image_transcript TEXT;
     """,
 )
 

@@ -254,6 +254,7 @@ async def chat_endpoint(
 
     image_dataurl = None
     stored_image: bytes | None = None
+    image_transcript = None
     if image_bytes:
         try:
             image_dataurl = compress_image_to_dataurl(image_bytes)
@@ -262,6 +263,12 @@ async def chat_endpoint(
         import base64
 
         stored_image = base64.b64decode(image_dataurl.split(",", 1)[1])
+        try:
+            image_transcript = await transcribe_image(image_dataurl)
+        except Exception:
+            image_transcript = None
+        if not image_transcript:
+            image_transcript = "(Photo envoyée mais transcription indisponible.)"
 
     init_db()
 
@@ -269,9 +276,16 @@ async def chat_endpoint(
     with get_db() as db:
         conv_id = _get_or_create_conversation(db, eleve["id"], exercice["id"])
         history = _load_history(db, conv_id)
-        _save_message(db, conv_id, "user", user_content, stored_image)
+        _save_message(
+            db, conv_id, "user", user_content, stored_image, image_transcript
+        )
         history.append(
-            {"role": "user", "content": user_content, "has_image": image_dataurl is not None}
+            {
+                "role": "user",
+                "content": user_content,
+                "has_image": image_dataurl is not None,
+                "image_transcript": image_transcript,
+            }
         )
 
         eleve_dict = dict(eleve)
