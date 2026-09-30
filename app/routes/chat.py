@@ -85,11 +85,18 @@ def _load_history(db, conversation_id: int) -> list[dict]:
 
 
 def _save_message(
-    db, conversation_id: int, role: str, content: str, image: bytes | None = None
+    db,
+    conversation_id: int,
+    role: str,
+    content: str,
+    image: bytes | None = None,
+    image_transcript: str | None = None,
 ) -> None:
     db.execute(
-        "INSERT INTO devoirsfaits.messages (conversation_id, role, content, image) VALUES (%s, %s, %s, %s)",
-        (conversation_id, role, content, image),
+        "INSERT INTO devoirsfaits.messages "
+        "(conversation_id, role, content, image, image_transcript) "
+        "VALUES (%s, %s, %s, %s, %s)",
+        (conversation_id, role, content, image, image_transcript),
     )
 
 
