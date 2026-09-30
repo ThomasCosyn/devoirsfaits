@@ -63,10 +63,8 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON devoirsfaits.messages (c
 """
 
 _MIGRATIONS = (
-    """
-    ALTER TABLE devoirsfaits.conversations ALTER COLUMN exercice_id DROP NOT NULL;
-    ALTER TABLE devoirsfaits.messages ADD COLUMN IF NOT EXISTS image_transcript TEXT;
-    """,
+    "ALTER TABLE devoirsfaits.conversations ALTER COLUMN exercice_id DROP NOT NULL",
+    "ALTER TABLE devoirsfaits.messages ADD COLUMN IF NOT EXISTS image_transcript TEXT",
 )
 
 
@@ -75,6 +73,7 @@ def init_db() -> None:
         conn.execute(_SCHEMA)
         for migration in _MIGRATIONS:
             conn.execute(migration)
+        conn.commit()
 
 
 def get_pool() -> psycopg_pool.ConnectionPool:
@@ -90,11 +89,6 @@ def get_pool() -> psycopg_pool.ConnectionPool:
                     kwargs={"row_factory": psycopg.rows.dict_row},
                 )
     return _pool
-
-
-def init_db() -> None:
-    with get_pool().connection() as conn:
-        conn.execute(_SCHEMA)
 
 
 @contextmanager
