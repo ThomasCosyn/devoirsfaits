@@ -142,6 +142,21 @@ body {
 .chat-header-info strong { font-size: 15px; }
 .chat-header-info span { font-size: 12px; color: var(--muted); }
 
+.header-actions { display: flex; align-items: center; gap: 2px; }
+
+.reset-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background .15s ease, color .15s ease, transform .3s ease;
+}
+
+.reset-btn:hover { background: #efece6; color: var(--danger); }
+
 .logout {
   text-decoration: none;
   color: var(--muted);

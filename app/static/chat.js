@@ -193,6 +193,22 @@
     }
   });
 
+  const resetBtn = document.getElementById("reset-chat");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", async () => {
+      if (busy) return;
+      if (!confirm("Recommencer la conversation ? L'historique sera effacé.")) return;
+      try {
+        const res = await fetch(`/api/chat/${slug}/reset`, { method: "POST" });
+        if (!res.ok) throw new Error();
+        chat.textContent = "";
+        quickstart.classList.remove("hidden");
+      } catch {
+        addMsg("bot", "Impossible de réinitialiser la conversation. Recharge la page.");
+      }
+    });
+  }
+
   quickstart.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => send(btn.dataset.msg, null));
   });

@@ -12,7 +12,10 @@
     <strong>{{ exercice.titre }}</strong>
     <span>{{ eleve.prenom }} · {{ eleve.classe_nom }}</span>
   </div>
-  <a href="/logout" class="logout" title="Se déconnecter">⏻</a>
+  <div class="header-actions">
+    <button type="button" id="reset-chat" class="reset-btn" title="Recommencer la conversation">↺</button>
+    <a href="/logout" class="logout" title="Se déconnecter">⏻</a>
+  </div>
 </header>
 
 <main id="chat" class="chat-messages" aria-live="polite"></main>

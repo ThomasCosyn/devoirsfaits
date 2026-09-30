@@ -145,6 +145,37 @@ async def exercice_page(request: Request, slug: str):
     )
 
 
+@router.post("/api/chat/{slug}/reset")
+async def chat_reset(request: Request, slug: str):
+    eleve = get_current_eleve(request)
+    if not eleve:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    exercice = _get_exercice(slug)
+    if not exercice:
+        raise HTTPException(status_code=404, detail="Exercice inconnu")
+    if exercice["classe_id"] is not None and exercice["classe_id"] != eleve["classe_id"]:
+        raise HTTPException(status_code=403, detail="Exercice d'une autre classe")
+    with get_db() as db:
+        db.execute(
+            """
+            DELETE FROM devoirsfaits.messages
+            WHERE conversation_id IN (
+                SELECT id FROM devoirsfaits.conversations
+                WHERE eleve_id = %s AND exercice_id IS NOT DISTINCT FROM %s
+            )
+            """,
+            (eleve["id"], exercice["id"]),
+        )
+        db.execute(
+            """
+            DELETE FROM devoirsfaits.conversations
+            WHERE eleve_id = %s AND exercice_id IS NOT DISTINCT FROM %s
+            """,
+            (eleve["id"], exercice["id"]),
+        )
+    return JSONResponse({"ok": True})
+
+
 @router.get("/api/chat/{slug}/history")
 async def chat_history(request: Request, slug: str):
     eleve = get_current_eleve(request)
