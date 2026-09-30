@@ -62,6 +62,29 @@ CREATE TABLE IF NOT EXISTS devoirsfaits.messages (
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON devoirsfaits.messages (conversation_id);
 """
 
+_MIGRATIONS = (
+    """
+    DO $$ BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'devoirsfaits'
+              AND table_name = 'conversations'
+              AND column_name = 'exercice_id'
+              AND is_nullable = 'NO'
+        ) THEN
+            EXECUTE 'ALTER TABLE devoirsfaits.conversations ALTER COLUMN exercice_id DROP NOT NULL';
+        END IF;
+    END $$;
+    """,
+)
+
+
+def init_db() -> None:
+    with get_pool().connection() as conn:
+        conn.execute(_SCHEMA)
+        for migration in _MIGRATIONS:
+            conn.execute(migration)
+
 
 def get_pool() -> psycopg_pool.ConnectionPool:
     global _pool

@@ -176,10 +176,11 @@ body {
 }
 
 .msg.bot {
-  align-self: flex-start;
-  background: var(--bubble-bot);
-  border: 1px solid #e6e2da;
-  border-bottom-left-radius: 4px;
+  align-self: stretch;
+  max-width: none;
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
 }
 
 .msg .photo-flag {
@@ -244,16 +245,21 @@ body {
   align-items: center;
 }
 
-.chat-input input[type="text"] {
+.chat-input textarea {
   flex: 1;
   padding: 12px 14px;
   border: 1.5px solid #d7d3cb;
-  border-radius: 999px;
+  border-radius: 16px;
   font-size: 16px;
+  font-family: inherit;
   background: #fbfaf8;
+  resize: none;
+  overflow-y: auto;
+  max-height: 160px;
+  line-height: 1.4;
 }
 
-.chat-input input[type="text"]:focus {
+.chat-input textarea:focus {
   outline: none;
   border-color: var(--accent);
   background: #fff;
@@ -290,6 +296,9 @@ body {
 #send:disabled { background: #a9c4b5; }
 
 .photo-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 4px 16px 8px;
   font-size: 12px;
   color: var(--muted);
@@ -297,9 +306,21 @@ body {
   flex-shrink: 0;
 }
 
+.photo-remove {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.photo-remove:hover { background: #fdecea; }
+
 .photo-name.hidden, .typing.hidden, .quickstart.hidden { display: none; }
 
 @media (min-width: 700px) {
   .chat-messages { padding: 16px max(12px, calc((100% - 680px) / 2)); }
-  .msg { max-width: 75%; }
+  .msg.user { max-width: 75%; }
 }

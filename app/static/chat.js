@@ -7,6 +7,8 @@
   const sendBtn = document.getElementById("send");
   const typing = document.getElementById("typing");
   const quickstart = document.getElementById("quickstart");
+  const photoRemove = document.getElementById("photo-remove");
+  const photoNameText = document.getElementById("photo-name-text");
   const slug = location.pathname.split("/").pop();
 
   let pendingPhoto = null;
@@ -106,9 +108,11 @@
     } finally {
       setBusy(false);
       pendingPhoto = null;
+      photoInput.value = "";
+      photoNameText.textContent = "";
       photoName.classList.add("hidden");
-      photoName.textContent = "";
       input.value = "";
+      autoResize();
       input.focus();
     }
   }
@@ -118,6 +122,20 @@
     const message = input.value.trim();
     if (!message && !pendingPhoto) return;
     send(message, pendingPhoto);
+  });
+
+  function autoResize() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 160) + "px";
+  }
+
+  input.addEventListener("input", autoResize);
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
   });
 
   photoInput.addEventListener("change", () => {
@@ -132,9 +150,18 @@
     const label = file.name && file.name !== "image.png"
       ? file.name
       : "capture d'écran";
-    photoName.textContent = "📷 " + label + " — prête à envoyer";
+    photoNameText.textContent = "📷 " + label + " — prête à envoyer";
     photoName.classList.remove("hidden");
   }
+
+  function clearPendingPhoto() {
+    pendingPhoto = null;
+    photoInput.value = "";
+    photoNameText.textContent = "";
+    photoName.classList.add("hidden");
+  }
+
+  photoRemove.addEventListener("click", clearPendingPhoto);
 
   document.addEventListener("paste", (e) => {
     if (busy) return;
