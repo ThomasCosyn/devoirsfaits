@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
+from app.config import settings
 from app.db import get_db, query_one, init_db
 from app.llm import build_context_block, compress_image_to_dataurl, stream_chat
 from app.routes.auth import get_current_eleve
@@ -279,6 +281,9 @@ async def chat_endpoint(
         try:
             image_transcript = await transcribe_image(image_dataurl)
         except Exception:
+            logging.getLogger("devoirsfaits").exception(
+                "Transcription d'image échouée (modèle=%s)", settings.MISTRAL_MODEL
+            )
             image_transcript = None
         if not image_transcript:
             image_transcript = "(Photo envoyée mais transcription indisponible.)"
