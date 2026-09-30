@@ -58,6 +58,13 @@ def _get_or_create_conversation(db, eleve_id: int, exercice_id: int | None) -> i
             (eleve_id, exercice_id),
         )
         return cur.fetchone()["id"]
+    row = db.execute(
+        "SELECT id FROM devoirsfaits.conversations "
+        "WHERE eleve_id = %s AND exercice_id IS NULL ORDER BY id DESC LIMIT 1",
+        (eleve_id,),
+    ).fetchone()
+    if row:
+        return row["id"]
     cur = db.execute(
         "INSERT INTO devoirsfaits.conversations (eleve_id) VALUES (%s) RETURNING id",
         (eleve_id,),
