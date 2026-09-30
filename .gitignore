@@ -25,3 +25,10 @@ data/
 .DS_Store
 .idea/
 .vscode/
+
+# terraform
+deploy/terraform/.terraform/
+deploy/terraform/*.tfstate*
+deploy/terraform/terraform.tfvars
+deploy/terraform/*.auto.tfvars
+deploy/terraform/crash.log

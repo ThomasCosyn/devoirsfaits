@@ -1,0 +1,18 @@
+# Copiez ce fichier en terraform.tfvars et renseignez les valeurs.
+# ⚠️ Ne commitez jamais terraform.tfvars (il contient des secrets) — il est dans .gitignore si vous l'ajoutez.
+
+scaleway_organization_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+scaleway_project_id      = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Base partagée (référencée, pas créée ici)
+database_url = "postgresql://user:password@host:5432/ma_base"
+
+# Sessions
+secret_key = "générée via: python -c 'import secrets; print(secrets.token_hex(32))'"
+
+# API Mistral
+mistral_api_key = "..."
+
+# Langfuse (optionnel — vide = tracing désactivé)
+langfuse_public_key = ""
+langfuse_secret_key = ""
