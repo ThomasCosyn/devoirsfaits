@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import getpass
 import re
 import sys
@@ -43,6 +44,13 @@ def cmd_set_programme(args):
             (programme, niveau["id"]),
         )
     print(f"Programme du niveau {args.niveau} mis à jour ({len(programme)} caractères).")
+
+
+def annee_scolaire_courante() -> str:
+    """Année scolaire en cours : sept-janv -> N/N+1, févr-août -> N-1/N."""
+    today = datetime.date.today()
+    debut = today.year if today.month >= 9 else today.year - 1
+    return f"{debut}-{debut + 1}"
 
 
 def cmd_add_class(args):
@@ -361,7 +369,8 @@ def main():
     p = sub.add_parser("add-class", help="Créer une classe rattachée à un niveau")
     p.add_argument("classe")
     p.add_argument("--niveau", required=True, help="Niveau (ex: 2nde)")
-    p.add_argument("--annee", default="2025-2026")
+    p.add_argument("--annee", default=annee_scolaire_courante(),
+                   help="Par défaut : année scolaire en cours")
     p.set_defaults(fn=cmd_add_class)
 
     p = sub.add_parser("add-exercice", help="Ajouter un exercice à un niveau")
