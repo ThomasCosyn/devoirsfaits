@@ -62,9 +62,11 @@ Le fichier `.env` est chargé automatiquement par l'application et le CLI
 ## CLI enseignant
 
 ```bash
-python cli/manage.py add-class 3A --annee 2025-2026 --programme "Programme de 3A : ..."
+python cli/manage.py add-niveau 2nd
+python cli/manage.py set-programme 2nd --fichier programme-2nd.txt
+python cli/manage.py add-class 2nd10 --niveau 2nd --annee 2025-2026
 python cli/manage.py sync feuille.tex corrige.tex     # exercices depuis LaTeX
-python cli/manage.py add-student 3A Dupont Lucie --login lucie.d
+python cli/manage.py import-eleves 2nd10 eleves.txt  # 1re ligne = niveau
 python cli/manage.py list-students
 ```
 
@@ -78,7 +80,7 @@ insère l'icône cliquable, et le CLI synchronise les énoncés/corrections vers
 \askmesetup{assistant.mondomaine.fr}
 ...
 % feuille élève
-\begin{askme}{ex-pgcd-01}{Exercice 1}{3A}
+\begin{askme}{ex-pgcd-01}{Exercice 1}{3e}
 Déterminer le PGCD de 120 et 84...
 \end{askme}
 

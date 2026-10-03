@@ -14,11 +14,17 @@ _lock = threading.Lock()
 _SCHEMA = """
 CREATE SCHEMA IF NOT EXISTS devoirsfaits;
 
+CREATE TABLE IF NOT EXISTS devoirsfaits.niveaux (
+    id SERIAL PRIMARY KEY,
+    nom TEXT NOT NULL UNIQUE,
+    programme TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS devoirsfaits.classes (
     id SERIAL PRIMARY KEY,
     nom TEXT NOT NULL UNIQUE,
     annee_scolaire TEXT NOT NULL,
-    programme TEXT NOT NULL DEFAULT ''
+    niveau_id INTEGER NOT NULL REFERENCES devoirsfaits.niveaux(id)
 );
 
 CREATE TABLE IF NOT EXISTS devoirsfaits.eleves (
@@ -34,7 +40,7 @@ CREATE TABLE IF NOT EXISTS devoirsfaits.eleves (
 
 CREATE TABLE IF NOT EXISTS devoirsfaits.exercices (
     id SERIAL PRIMARY KEY,
-    classe_id INTEGER NOT NULL REFERENCES devoirsfaits.classes(id),
+    niveau_id INTEGER NOT NULL REFERENCES devoirsfaits.niveaux(id),
     slug TEXT NOT NULL UNIQUE,
     titre TEXT NOT NULL,
     enonce TEXT NOT NULL,
@@ -65,6 +71,60 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON devoirsfaits.messages (c
 _MIGRATIONS = (
     "ALTER TABLE devoirsfaits.conversations ALTER COLUMN exercice_id DROP NOT NULL",
     "ALTER TABLE devoirsfaits.messages ADD COLUMN IF NOT EXISTS image_transcript TEXT",
+    """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'devoirsfaits' AND table_name = 'classes'
+              AND column_name = 'niveau_id'
+        ) THEN
+            INSERT INTO devoirsfaits.niveaux (nom, programme)
+            SELECT c.nom, COALESCE(c.programme, '')
+            FROM devoirsfaits.classes c
+            WHERE c.programme IS NOT NULL
+            ON CONFLICT (nom) DO NOTHING;
+            INSERT INTO devoirsfaits.niveaux (nom)
+            SELECT c.nom FROM devoirsfaits.classes c
+            ON CONFLICT (nom) DO NOTHING;
+            ALTER TABLE devoirsfaits.classes
+                ADD COLUMN niveau_id INTEGER REFERENCES devoirsfaits.niveaux(id);
+            UPDATE devoirsfaits.classes c
+            SET niveau_id = n.id
+            FROM devoirsfaits.niveaux n
+            WHERE n.nom = c.nom
+              AND (c.nom IN (SELECT nom FROM devoirsfaits.niveaux WHERE programme <> ''));
+            UPDATE devoirsfaits.classes c
+            SET niveau_id = n.id
+            FROM devoirsfaits.niveaux n
+            WHERE n.nom = c.nom
+              AND c.niveau_id IS NULL;
+            ALTER TABLE devoirsfaits.classes ALTER COLUMN niveau_id SET NOT NULL;
+            ALTER TABLE devoirsfaits.classes DROP COLUMN IF EXISTS programme;
+        END IF;
+    END
+    $$
+    """,
+    """
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'devoirsfaits' AND table_name = 'exercices'
+              AND column_name = 'classe_id'
+        ) THEN
+            ALTER TABLE devoirsfaits.exercices
+                ADD COLUMN IF NOT EXISTS niveau_id INTEGER REFERENCES devoirsfaits.niveaux(id);
+            UPDATE devoirsfaits.exercices x
+            SET niveau_id = c.niveau_id
+            FROM devoirsfaits.classes c
+            WHERE c.id = x.classe_id;
+            ALTER TABLE devoirsfaits.exercices ALTER COLUMN niveau_id SET NOT NULL;
+            ALTER TABLE devoirsfaits.exercices DROP COLUMN classe_id;
+        END IF;
+    END
+    $$
+    """,
 )
 
 

@@ -24,8 +24,10 @@ def get_current_eleve(request: Request):
         """
         SELECT e.id, e.login, e.nom, e.prenom,
                c.nom AS classe_nom, c.id AS classe_id,
-               c.annee_scolaire, c.programme
-        FROM devoirsfaits.eleves e JOIN devoirsfaits.classes c ON c.id = e.classe_id
+               c.annee_scolaire, n.id AS niveau_id, n.nom AS niveau_nom, n.programme
+        FROM devoirsfaits.eleves e
+        JOIN devoirsfaits.classes c ON c.id = e.classe_id
+        JOIN devoirsfaits.niveaux n ON n.id = c.niveau_id
         WHERE e.id = %s AND e.actif
         """,
         (eleve_id,),

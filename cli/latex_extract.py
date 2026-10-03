@@ -68,11 +68,11 @@ def latex_to_text(tex: str) -> str:
 def extract_askme(tex_content: str) -> list[dict]:
     result = []
     for m in ASKME_RE.finditer(tex_content):
-        slug, titre, classe, body = m.groups()
+        slug, titre, niveau, body = m.groups()
         result.append({
             "slug": slug.strip(),
             "titre": titre.strip(),
-            "classe": classe.strip(),
+            "niveau": niveau.strip(),
             "enonce": latex_to_text(body),
         })
     return result
