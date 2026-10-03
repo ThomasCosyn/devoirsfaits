@@ -102,9 +102,9 @@ def build_context_block(eleve: dict, exercice: dict) -> str:
 
 ### Élève
 - Nom : {eleve['prenom']} {eleve['nom']}
-- Classe : {eleve['classe_nom']} (année {eleve['annee_scolaire']})
+- Classe : {eleve['classe_nom']} ({eleve['niveau_nom']}, année {eleve['annee_scolaire']})
 
-### Programme de l'année pour sa classe
+### Programme de l'année pour son niveau
 {eleve['programme']}
 """
     if exercice.get("slug") == "libre" or not exercice.get("enonce"):

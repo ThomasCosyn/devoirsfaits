@@ -78,10 +78,11 @@ votre base Scaleway :
 
 ```bash
 export DATABASE_URL="postgresql://user:pass@your-db.fr-par.scw.cloud:5432/mabase"
-python cli/manage.py add-class 3A --annee 2025-2026
-python cli/manage.py set-programme 3A --fichier programme-3A.txt
+python cli/manage.py add-niveau 2nd
+python cli/manage.py set-programme 2nd --fichier programme-2nd.txt
+python cli/manage.py add-class 2nd10 --niveau 2nd
 python cli/manage.py sync feuille.tex corrige.tex   # exercices + corrections depuis vos .tex
-python cli/manage.py add-student 3A Dupont Lucie --login lucie.d
+python cli/manage.py import-eleves 2nd10 eleves.txt # 1re ligne = niveau
 ```
 
 Workflow type à chaque nouvelle feuille : compiler le PDF (l'icône y est déjà),
@@ -95,7 +96,7 @@ Sur votre machine, copier `latex/askme.sty` à côté de votre feuille (ou dans 
 \usepackage{askme}
 \askmesetup{assistant.votredomaine.fr}
 ...
-\begin{askme}{ex-pgcd-01}{Exercice 1}{3A}
+\begin{askme}{ex-pgcd-01}{Exercice 1}{3e}
 Déterminer le PGCD de 120 et 84...
 \end{askme}
 ```

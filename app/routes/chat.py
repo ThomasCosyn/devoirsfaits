@@ -34,19 +34,20 @@ def _get_exercice(slug: str):
     if slug == LIBRE_SLUG:
         return {
             "id": None,
-            "classe_id": None,
+            "niveau_id": None,
             "slug": LIBRE_SLUG,
             "titre": "Exercice libre",
             "enonce": "",
             "correction": "",
+            "niveau_nom": None,
             "classe_nom": None,
             "annee_scolaire": None,
         }
     return query_one(
         """
-        SELECT x.id, x.classe_id, x.slug, x.titre, x.enonce, x.correction,
-               c.nom AS classe_nom, c.annee_scolaire
-        FROM devoirsfaits.exercices x JOIN devoirsfaits.classes c ON c.id = x.classe_id
+        SELECT x.id, x.niveau_id, x.slug, x.titre, x.enonce, x.correction,
+               n.nom AS niveau_nom
+        FROM devoirsfaits.exercices x JOIN devoirsfaits.niveaux n ON n.id = x.niveau_id
         WHERE x.slug = %s
         """,
         (slug,),
@@ -174,8 +175,8 @@ async def chat_reset(request: Request, slug: str):
     exercice = _get_exercice(slug)
     if not exercice:
         raise HTTPException(status_code=404, detail="Exercice inconnu")
-    if exercice["classe_id"] is not None and exercice["classe_id"] != eleve["classe_id"]:
-        raise HTTPException(status_code=403, detail="Exercice d'une autre classe")
+    if exercice["niveau_id"] is not None and exercice["niveau_id"] != eleve["niveau_id"]:
+        raise HTTPException(status_code=403, detail="Exercice d'un autre niveau")
     with get_db() as db:
         db.execute(
             """
@@ -205,8 +206,8 @@ async def chat_history(request: Request, slug: str):
     exercice = _get_exercice(slug)
     if not exercice:
         raise HTTPException(status_code=404, detail="Exercice inconnu")
-    if exercice["classe_id"] is not None and exercice["classe_id"] != eleve["classe_id"]:
-        raise HTTPException(status_code=403, detail="Exercice d'une autre classe")
+    if exercice["niveau_id"] is not None and exercice["niveau_id"] != eleve["niveau_id"]:
+        raise HTTPException(status_code=403, detail="Exercice d'un autre niveau")
 
     with get_db() as db:
         conv_id = _get_or_create_conversation(db, eleve["id"], exercice["id"])
@@ -254,8 +255,8 @@ async def chat_endpoint(
     exercice = _get_exercice(slug)
     if not exercice:
         raise HTTPException(status_code=404, detail="Exercice inconnu")
-    if exercice["classe_id"] is not None and exercice["classe_id"] != eleve["classe_id"]:
-        raise HTTPException(status_code=403, detail="Exercice d'une autre classe")
+    if exercice["niveau_id"] is not None and exercice["niveau_id"] != eleve["niveau_id"]:
+        raise HTTPException(status_code=403, detail="Exercice d'un autre niveau")
 
     message = (message or "").strip()
     image_bytes: bytes | None = None
@@ -321,10 +322,11 @@ async def chat_endpoint(
         ).hexdigest()[:12]
         session_id = f"conv-{session_hash}"
         user_id = eleve["login"]
-        tags = ["devoirsfaits", ex_dict["classe_nom"] or "libre", exercice["slug"]]
+        tags = ["devoirsfaits", ex_dict["niveau_nom"] or "libre", exercice["slug"]]
         metadata = {
             "eleve": f"{eleve['prenom']} {eleve['nom']}",
-            "classe": ex_dict["classe_nom"],
+            "classe": eleve["classe_nom"],
+            "niveau": ex_dict["niveau_nom"],
             "exercice": exercice["slug"],
             "titre_exercice": exercice["titre"],
             "conversation_id": conv_id,
