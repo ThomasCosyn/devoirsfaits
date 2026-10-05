@@ -6,12 +6,18 @@
 %
 % Usage dans la feuille élève :
 %   \usepackage{askme}
-%   \askmesetup{assistant.mondomaine.fr}
+%   \askmesetup{assistant.mondomaine.fr}        % https par défaut (production)
+%   \askmesetup[http]{localhost:8000}           % test local (uvicorn sans TLS)
 %   ...
 %   \begin{askme}{ex-pgcd-01}{PGCD - Exercice 1}{3A}
-%   Déterminer le PGCD de 120 et 84. En déduire la forme irréductible
+%   Déterminer le PGCD de 120 et 84. En d\'eduire la forme irr\'eductible
 %   de la fraction $\frac{84}{120}$.
 %   \end{askme}
+%
+% Option showurl : affiche aussi l'URL en toutes lettres à côté de l'icône,
+% pour les visionneurs PDF qui ne supportent pas les liens cliquables
+% (photocopie, aperçu sur téléphone, etc.) :
+%   \usepackage[showurl]{askme}
 %
 % Usage dans le corrigé (fichier séparé, jamais distribué) :
 %   \begin{askmecorrection}{ex-pgcd-01}
@@ -19,14 +25,34 @@
 %   \end{askmecorrection}
 
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{askme}[2026/01/15 v2.0 Devoirs Faits clickable helper]
-
-\RequirePackage{hyperref}
+\ProvidesPackage{askme}[2026/01/16 v2.1 Devoirs Faits clickable helper]
 \RequirePackage{xcolor}
+\RequirePackage{hyperref}
 
-% Domaine de l'assistant (sans https://)
+% Options du package
+\newif\ifaskme@showurl
+\DeclareOption{showurl}{\askme@showurltrue}
+\ProcessOptions\relax
+
+% Les visionneurs compatibles ouvrent les liens dans une nouvelle fenêtre/onglet.
+% Remarque : le format PDF ne permet pas de le garantir partout ; Acrobat,
+% Firefox et la plupart des navigateurs respectent pdfnewwindow, mais certains
+% visionneurs (Aperçu macOS, mobiles) décident eux-mêmes.
+\hypersetup{pdfnewwindow=true}
+
+% Schéma de l'URL : https en production, http possible en local
+\newcommand{\askme@scheme}{https}
+% Domaine de l'assistant (sans schéma, ex : assistant.mondomaine.fr ou localhost:8000)
 \newcommand{\askme@domain}{assistant.mondomaine.fr}
-\newcommand{\askmesetup}[1]{\renewcommand{\askme@domain}{#1}}
+
+% \askmesetup[http]{localhost:8000}  ou  \askmesetup{assistant.mondomaine.fr}
+\newcommand{\askmesetup}[2][https]{%
+  \renewcommand{\askme@scheme}{#1}%
+  \renewcommand{\askme@domain}{#2}%
+}
+
+% URL complète d'un exercice
+\newcommand{\askme@url}[1]{\askme@scheme://\askme@domain/e/#1}
 
 % Icône cliquable : boussole teal si fontawesome5 est chargé, sinon astérisque
 \newcommand{\askme@icon}{%
@@ -34,13 +60,16 @@
   {{\small\color{teal}$\ast$}}%
 }
 
-% Environnement exercice : titre + icône cliquable, puis le corps (l'énoncé)
+% Environnement exercice : titre + icône cliquable (nouvel onglet),
+% puis le corps (l'énoncé)
 % #1 = slug (identifiant unique de l'exercice dans la base)
 % #2 = titre affiché
 % #3 = classe
 \newenvironment{askme}[3]{%
   \par\vspace{8pt}%
-  \noindent\textbf{\textsc{#2}}\hfill\href{https://\askme@domain/e/#1}{\askme@icon}%
+  \noindent\textbf{\textsc{#2}}\hfill
+  {\href{\askme@url{#1}}{\askme@icon}}%
+  \ifaskme@showurl\,{\footnotesize\ttfamily\href{\askme@url{#1}}{\askme@url{#1}}}\fi
   \par\vspace{3pt}%
   \noindent\ignorespaces
 }{%
