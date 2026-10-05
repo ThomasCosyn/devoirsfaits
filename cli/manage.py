@@ -16,7 +16,7 @@ from app.security import hash_password
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from latex_extract import parse_tex_file
+from latex_extract import extract_askme, extract_askmecorrection, extract_exo_opt
 
 
 def cmd_add_niveau(args):
@@ -220,8 +220,17 @@ def cmd_sync(args):
     for fichier in args.fichiers:
         if not Path(fichier).exists():
             sys.exit(f"Fichier introuvable : {fichier}")
-        exos, cors = parse_tex_file(fichier)
+        with open(fichier, encoding="utf-8") as f:
+            content = f.read()
+        exos = extract_askme(content)
+        if args.exo_env or args.niveau:
+            exos += extract_exo_opt(content, env_names=tuple(args.exo_env or ("exo", "exercice", "Exo")))
+        cors = extract_askmecorrection(content)
         for exo in exos:
+            if exo["slug"] in exercices:
+                continue
+            if not exo.get("niveau") and args.niveau:
+                exo["niveau"] = args.niveau
             exercices[exo["slug"]] = exo
         corrections.update(cors)
 
@@ -231,9 +240,9 @@ def cmd_sync(args):
     created, updated = 0, 0
     with get_db() as db:
         for slug, exo in exercices.items():
-            niveau_id = _resolve_niveau_id(exo["niveau"])
+            niveau_id = _resolve_niveau_id(exo["niveau"]) if exo.get("niveau") else None
             if not niveau_id:
-                print(f"⚠ niveau {exo['niveau']} inconnu — exo {slug} ignoré (créez-le d'abord)")
+                print(f"⚠ niveau {exo.get('niveau') or '(manquant — utilisez --niveau)'} inconnu — exo {slug} ignoré (créez-le d'abord)")
                 continue
             correction = corrections.get(slug, "")
             existing = query_one(
@@ -404,6 +413,8 @@ def main():
 
     p = sub.add_parser("sync", help="Synchroniser les exercices depuis des fichiers .tex")
     p.add_argument("fichiers", nargs="+", help="Fichiers .tex (feuille + corrigé)")
+    p.add_argument("--niveau", help="Niveau par défaut pour les \\begin{exo}[slug] sans \\askmeniveau")
+    p.add_argument("--exo-env", nargs="*", default=[], help="Noms des environnements exo à extraire (défaut : exo exercice Exo)")
     p.set_defaults(fn=cmd_sync)
 
     p = sub.add_parser("seed-demo", help="Données de démonstration")
