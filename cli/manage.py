@@ -223,8 +223,7 @@ def cmd_sync(args):
         with open(fichier, encoding="utf-8") as f:
             content = f.read()
         exos = extract_askme(content)
-        if args.exo_env or args.niveau:
-            exos += extract_exo_opt(content, env_names=tuple(args.exo_env or ("exo", "exercice", "Exo")))
+        exos += extract_exo_opt(content, env_names=tuple(args.exo_env or ("exo", "exercice", "Exo")))
         cors = extract_askmecorrection(content)
         for exo in exos:
             if exo["slug"] in exercices:
@@ -235,7 +234,10 @@ def cmd_sync(args):
         corrections.update(cors)
 
     if not exercices and not corrections:
-        sys.exit("Aucun environnement askme/askmecorrection trouvé.")
+        sys.exit(
+            "Aucun exercice trouvé. Vérifiez que vos exercices utilisent "
+            "\\begin{exo}[slug] ou \\begin{askme}{slug}{titre}{niveau}."
+        )
 
     created, updated = 0, 0
     with get_db() as db:
