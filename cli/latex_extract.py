@@ -17,8 +17,9 @@ EXO_OPT_RE_TEMPLATE = (
     r"(?P<body>.*?)\\end\{(?P=env)\}"
 )
 
-# Un slug ne contient que des minuscules, chiffres et tirets (pas une phrase).
-SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+# Un slug : lettres minuscules (accents inclus), chiffres et tirets.
+# Un mot commençant par une majuscule est considéré comme un titre, pas un slug.
+SLUG_RE = re.compile(r"^[a-zà-öø-ÿ\u0153]([a-zà-öø-ÿ\u0153\u00e0-\u00ff0-9]*)(-[a-zà-öø-ÿ\u0153\u00e0-\u00ff0-9]+)*$", re.UNICODE)
 ASKMECORRECTION_RE = re.compile(
     r"\\begin\{askmecorrection\}\{([^}]*)\}(.*?)\\end\{askmecorrection\}",
     re.S,
