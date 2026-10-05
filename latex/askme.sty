@@ -58,10 +58,8 @@
 % \begin{exo}[slug] du même fichier (lu par le CLI au moment du sync).
 \newcommand{\askmeniveau}[1]{}
 
-% Lien cliquable autonome (nouvel onglet) vers un exercice.
-% À utiliser dans vos propres environnements d'exercices, ex. :
-%   \newenvironment{exo}[1][]{...
-oindent\textbf{Exercice}\hfill\askmelink{#1}...}
+% Lien cliquable autonome (nouvel onglet) vers un exercice,
+% à utiliser dans vos propres environnements, ex. : \askmelink{mon-slug}
 \newcommand{\askmelink}[1]{%
   \href{\askme@url{#1}}{\askme@icon}%
   \ifaskme@showurl\,{\footnotesize\ttfamily\href{\askme@url{#1}}{\askme@url{#1}}}\fi
