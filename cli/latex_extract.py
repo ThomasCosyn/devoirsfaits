@@ -8,11 +8,17 @@ ASKME_RE = re.compile(
     re.S,
 )
 
-# \begin{exo}[slug] ... \end{exo} : exercices balisés via un argument optionnel.
-# Le nom d'environnement est configurable, ex. exo, exercice, Exo.
+# \begin{exo}[titre][slug] ... \end{exo} : exercices balisés par un slug.
+# Le titre reste le 1er argument optionnel ; le slug est le 2e.
+# Compatibilité : \begin{exo}[slug] (1 seul argument ressemblant à un slug) est aussi accepté.
 EXO_OPT_RE_TEMPLATE = (
-    r"\\begin\{(?P<env>%s)\}\[(?P<slug>[^\]]*)\](?P<body>.*?)\\end\{(?P=env)\}"
+    r"\\begin\{(?P<env>%s)\}"
+    r"(?:\[(?P<arg1>[^\]]*)\])?(?:\[(?P<arg2>[^\]]*)\])?"
+    r"(?P<body>.*?)\\end\{(?P=env)\}"
 )
+
+# Un slug ne contient que des minuscules, chiffres et tirets (pas une phrase).
+SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 ASKMECORRECTION_RE = re.compile(
     r"\\begin\{askmecorrection\}\{([^}]*)\}(.*?)\\end\{askmecorrection\}",
     re.S,
@@ -121,15 +127,20 @@ def extract_exo_opt(
     envs = "|".join(re.escape(e) for e in env_names)
     pattern = re.compile(EXO_OPT_RE_TEMPLATE % envs, re.S)
     for m in pattern.finditer(tex_content):
-        slug = m.group("slug").strip()
-        body = m.group("body")
-        if not slug:
+        arg1 = (m.group("arg1") or "").strip()
+        arg2 = (m.group("arg2") or "").strip()
+        # [titre][slug] ou [slug] seul (ressemblant à un slug)
+        if arg2 and SLUG_RE.match(arg2):
+            slug, titre = arg2, (arg1 or f"{titre_prefix} {arg2}")
+        elif arg1 and not arg2 and SLUG_RE.match(arg1):
+            slug, titre = arg1, f"{titre_prefix} {arg1}"
+        else:
             continue
         result.append({
             "slug": slug,
-            "titre": f"{titre_prefix} {slug}",
+            "titre": titre,
             "niveau": None,
-            "enonce": latex_to_text(body),
+            "enonce": latex_to_text(m.group("body")),
         })
     return result
 
