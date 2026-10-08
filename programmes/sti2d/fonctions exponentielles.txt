@@ -1,0 +1,15 @@
+Analyse : fonctions exponentielles.
+
+Notions de terminale :
+- Fonction $x \mapsto a^x$ ($a > 0$) : prolongement continu de la suite géométrique $(a^n)$ ; extension
+  à $\mathbb{R}$ par $a^{-x} = \frac{1}{a^x}$.
+- Sens de variation et allure de la courbe selon $a$ ($a > 1$ : croissante ; $0 < a < 1$ : décroissante).
+- Fonctions $x \mapsto k \cdot a^x$ : variation selon le signe de $k$ et la valeur de $a$.
+- Propriétés algébriques : $a^{x+y} = a^x \cdot a^y$ ; $a^{x-y} = \frac{a^x}{a^y}$ ; $a^{nx} = (a^x)^n$.
+- Exposant $\frac{1}{n}$ : taux d'évolution moyen équivalent à $n$ évolutions successives
+  (coefficient multiplicateur global $c$, taux moyen $t$ tel que $(1+t)^n = c$, donc $1 + t = c^{1/n}$).
+
+Pistes d'aide : "Est-ce que ça augmente toujours du même montant, ou d'un même pourcentage ? Quel modèle
+choisir : suite arithmétique, géométrique, fonction exponentielle ?" ; "Entre 2010 et 2020, ça a augmenté
+de 60 % au total : est-ce 6 % par an ? Pourquoi pas ?" ; "Quelle opération inverse une puissance ?"
+faire retrouver la propriété à partir de $a^2 \cdot a^3 = a^5$ sur les puissances entières.

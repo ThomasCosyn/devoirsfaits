@@ -1,0 +1,16 @@
+Statistique : séries à deux variables quantitatives.
+
+Notions de terminale :
+- Nuage de points associé à une série à deux variables quantitatives ; le représenter, le lire.
+- Ajustement affine : droite d'ajustement "au jugé" ou méthode des moindres carrés (droite $y = ax + b$
+  minimisant $\Sigma_i (y_i - (ax_i + b))^2$, présentée sans calcul de minimum).
+- Interpolation (entre des données connues) et extrapolation (hors du domaine observé) : les distinguer
+  et discuter leur pertinence.
+- Changement de variable ($u^2$, $\frac{1}{t}$, $\frac{1}{\sqrt{n}}$, $\log(y)$...) pour se ramener à une
+  relation linéaire avant d'ajuster.
+- Esprit critique sur la pertinence de la modélisation et les limites de l'extrapolation.
+
+Pistes d'aide : "Que remarques-tu sur le nuage : les points s'alignent-ils à peu près ?" ; "Veux-tu estimer
+une valeur ENTRE deux données ou AU-DELÀ des données ? Dans quel cas la confiance est-elle plus fragile ?"
+"Fais un changement de variable : que devient le nuage ?" ; "Que représente la pente de la droite dans le
+contexte (par exemple par an) ?" ; "La modélisation a-t-elle encore du sens si la tendance change ?"

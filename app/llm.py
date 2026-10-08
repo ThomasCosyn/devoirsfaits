@@ -143,34 +143,44 @@ def get_client() -> AsyncOpenAI:
     )
 
 
-def select_chapitre(programme: str, chapitres: list[dict] | None, exercice: dict) -> str:
-    """Choisit le fragment de programme à injecter dans le prompt.
+def select_chapitres(programme: str, chapitres: list[dict] | None, exercice: dict) -> str:
+    """Construit la section programme à injecter dans le prompt.
 
-    Priorité : chapitre explicitement attribué à l'exercice, puis heuristique
-    sur le titre du chapitre (mots-clés du titre/énoncé), puis chapitre unique,
-    enfin programme complet du niveau.
+    Toujours inclus : chapitres transversaux (automatismes, logique...).
+    En plus : chapitres explicitement rattachés à l'exercice, sinon heuristique
+    sur les mots-clés des titres de chapitres (titre/énoncé de l'exercice).
+    Repli sur le programme complet si aucun chapitre n'existe pour le niveau.
     """
     chapitres = chapitres or []
-    attribue = next((c for c in chapitres if c.get("id") == exercice.get("chapitre_id")), None)
-    if attribue:
-        return f"### Chapitre du programme concerné : {attribue['titre']}\n{attribue['contenu']}"
+    if not chapitres:
+        return f"### Programme de l'année pour son niveau\n{programme}"
 
-    titre = (exercice.get("titre") or "").lower()
-    enonce = (exercice.get("enonce") or "").lower()
-    for chap in chapitres:
-        mots = [m for m in re.split(r"[^\wéèêàùûôîïç]+", (chap["titre"] or "").lower()) if len(m) >= 4]
-        if any(m in titre or m in enonce for m in mots):
-            return f"### Chapitre du programme concerné : {chap['titre']}\n{chap['contenu']}"
+    retenus: list[dict] = [c for c in chapitres if c.get("transversal")]
+    ids = set(exercice.get("chapitre_ids") or [])
+    if exercice.get("chapitre_id") is not None:
+        ids.add(exercice["chapitre_id"])
+    lies = [c for c in chapitres if c["id"] in ids and not c.get("transversal")]
 
-    if len(chapitres) == 1:
-        return f"### Chapitre du programme concerné : {chapitres[0]['titre']}\n{chapitres[0]['contenu']}"
+    if not lies:
+        titre = (exercice.get("titre") or "").lower()
+        enonce = (exercice.get("enonce") or "").lower()
+        for chap in chapitres:
+            if chap.get("transversal"):
+                continue
+            mots = [m for m in re.split(r"[^\wéèêàùûôîïç]+", (chap["titre"] or "").lower()) if len(m) >= 4]
+            if any(m in titre or m in enonce for m in mots):
+                lies.append(chap)
 
-    return f"### Programme de l'année pour son niveau\n{programme}"
+    sections = [
+        f"### Chapitre du programme concerné : {c['titre']}\n{c['contenu']}"
+        for c in retenus + lies
+    ]
+    return "\n\n".join(sections) if sections else f"### Programme de l'année pour son niveau\n{programme}"
 
 
 def build_context_block(eleve: dict, exercice: dict) -> str:
-    programme_section = select_chapitre(
-        eleve.get("programme", ""), eleve.get("chapitres"), exercice
+    programme_section = select_chapitres(
+        eleve.get("programme", ""), exercice.get("chapitres"), exercice
     )
     context = f"""## Contexte de la session
 

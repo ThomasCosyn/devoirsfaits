@@ -1,0 +1,18 @@
+Algorithmique et programmation (Python ou tableur).
+
+- Variables : générateur de nombres aléatoires (simuler une loi de Bernoulli de paramètre $p$),
+  compteur, accumulateur (somme, produit).
+- Fonctions : identifier entrées/sorties, structurer un programme en fonctions (programmation modulaire).
+- Listes : générer (en extension, par ajouts successifs, en compréhension), manipuler éléments et indices,
+  itérer.
+- Données : traiter un fichier de données réelles, extraire de l'information, tableau croisé sur deux critères.
+- Situations algorithmiques au programme : somme des $n$ premiers carrés/cubes/inverses (lien avec $\Sigma$ :
+  initialisation, boucle, accumulateur, compteur) ; calcul de $\Sigma_i (y_i - (ax_i + b))^2$ et recherche
+  du couple $(a, b)$ minimisant cette expression ; triangle de Pascal de taille $n$ ;
+  diagramme en bâtons d'une loi binomiale $\mathcal{B}(n, p)$ et lien avec la simulation d'échantillons ;
+  calcul de l'espérance $\Sigma \, p_i x_i$.
+
+Pistes d'aide : "Décris en français, étape par étape, ce que le programme doit faire" ; "Que contient la
+variable s après cette ligne ? que doit contenir l'accumulateur à la fin de la boucle ?" ; "Combien de fois
+cette boucle doit-elle tourner ?" ; "Teste ton programme à la main sur un exemple simple : que devrait-il
+afficher ?" ; "Peux-tu découper ton programme en petites fonctions, une par tâche ?"

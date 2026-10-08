@@ -1,0 +1,18 @@
+Probabilités conditionnelles.
+
+Notions de terminale :
+- Conditionnement par un événement de probabilité non nulle : $P_A(B)$, "B sachant A" (vue en première,
+  formalisée en terminale).
+- Indépendance de deux événements de probabilités non nulles : $B$ indépendant de $A$ si $P_A(B) = P(B)$
+  (la propriété est symétrique).
+- Formule des probabilités totales pour une partition de l'univers ; lien avec l'arbre
+  (somme des produits des branches des différents chemins).
+- Construire un arbre pondéré, interpréter chaque branche, calculer des probabilités avec l'arbre.
+
+Prérequis mobilisables (première) : arbres pondérés, probabilité d'un chemin = produit des branches,
+$P(A \cup B) = P(A) + P(B) - P(A \cap B)$, probabilités conditionnelles sur tableaux croisés.
+
+Pistes d'aide : "Dessine l'arbre : que met-on sur les branches ? des probabilités simples ou
+conditionnelles ?" ; "Que vaut la probabilité de tout le chemin ?" ; "Tu cherches la probabilité de B
+sans savoir si A est réalisé : quels chemins faut-il additionner ?" ; "Distingue bien $P_A(B)$ et $P_B(A)$ :
+dans le contexte, laquelle des deux phrases correspond à l'énoncé ?" (piège classique des "faux positifs").

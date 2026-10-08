@@ -1,0 +1,21 @@
+Analyse : suites numériques.
+
+Notions de terminale :
+- Suites arithmétiques : moyenne arithmétique de deux nombres ; terme général $u_n = u_0 + n \cdot r$
+  (ou $u_n = u_1 + (n-1) \cdot r$ selon l'indexation) ; somme des $n$ premiers termes ; notation $\Sigma$.
+- Suites géométriques à termes positifs : moyenne géométrique de deux nombres positifs ($\sqrt{ab}$) ;
+  terme général $u_n = u_0 \cdot q^n$ ; somme des $n$ premiers termes ; notation $\Sigma$.
+- Prouver que trois nombres sont (ou non) des termes consécutifs d'une suite arithmétique ou géométrique.
+- Déterminer la raison d'une suite modélisant une évolution ; reconnaître une situation relevant d'une
+  somme de termes consécutifs (ex. intérêts composés avec versements réguliers).
+- Lien avec le langage courant : suite arithmétique = croissance "linéaire", suite géométrique =
+  croissance "exponentielle".
+
+Prérequis mobilisables (première) : notion de suite, calcul de termes, suites arithmétiques et géométriques
+de base, modélisation d'évolutions.
+
+Pistes d'aide : "D'une année à l'autre, ajoute-t-on toujours la même quantité ou multiplie-t-on par le même
+coefficient ?" ; "Que vaut la différence $u_{n+1} - u_n$ ? et le quotient $\frac{u_{n+1}}{u_n}$ ?"
+"Pour la somme, peux-tu écrire quelques termes et repérer une structure ?" ; "Trois nombres consécutifs
+d'une suite géométrique : quelle condition sur les quotients ?" ; "Êtes-vous dans le cas $u_0$ ou $u_1$
+en premier terme ? Compte bien le nombre de termes."

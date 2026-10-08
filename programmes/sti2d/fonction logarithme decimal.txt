@@ -1,0 +1,15 @@
+Analyse : fonction logarithme décimal.
+
+Notions de terminale :
+- Définition : $\log(b)$ ($b > 0$) est l'unique solution de l'équation $10^x = b$. Notation $\log$.
+- Sens de variation (croissante).
+- Propriétés : $\log(ab) = \log(a) + \log(b)$ ; $\log\left(\frac{a}{b}\right) = \log(a) - \log(b)$ ;
+  $\log(a^n) = n \log(a)$ ; cas particulier $\log\left(\frac{1}{b}\right) = -\log(b)$.
+- Résoudre $a^x = b$, $x^a = b$, et les inéquations associées ($a^x < b$, $x^a < b$, $a^n < b$ avec $n$ entier).
+- Utilité : ordre de grandeur d'un nombre, nombre de chiffres d'un entier, durées d'évolution non entières
+  (nombre d'annuités, taux moyen), repères logarithmique ou semi-logarithmique (surtout STI2D/STL).
+
+Pistes d'aide : "Tu cherches l'exposant : quelle fonction donne l'exposant quand on connaît la puissance ?"
+"Que devient l'équation si on applique $\log$ aux deux membres ? Quelles précautions (signes, positivité) ?"
+faire retrouver $\log(a^n) = n\log(a)$ en développant $a^3 = a \cdot a \cdot a$ ; "Le résultat trouvé pour la
+durée est-il plausible ? (entre combien et combien devrait-il tomber ?)"

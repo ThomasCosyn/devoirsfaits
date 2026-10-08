@@ -55,11 +55,18 @@ def _get_exercice(slug: str):
     if exo:
         exo["chapitres"] = query_db(
             """
-            SELECT id, titre, contenu FROM devoirsfaits.programme_chapitres
-            WHERE niveau_id = %s ORDER BY ordre, id
+            SELECT id, titre, contenu, transversal FROM devoirsfaits.programme_chapitres
+            WHERE niveau_id = %s ORDER BY transversal DESC, ordre, id
             """,
             (exo["niveau_id"],),
         )
+        exo["chapitre_ids"] = [
+            r["chapitre_id"]
+            for r in query_db(
+                "SELECT chapitre_id FROM devoirsfaits.exercices_chapitres WHERE exercice_id = %s",
+                (exo["id"],),
+            )
+        ]
     return exo
 
 
