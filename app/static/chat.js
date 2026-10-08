@@ -106,6 +106,7 @@
   async function send(message, photoFile) {
     if (busy) return;
     addMsg("user", message || "Voici une photo de mon cahier.", photoObjectUrl);
+    clearPendingPhoto();
     setBusy(true);
     quickstart.classList.add("hidden");
 
@@ -154,14 +155,6 @@
       if (!botText) botBody.textContent = "Erreur de connexion. Réessaie dans un instant.";
     } finally {
       setBusy(false);
-      pendingPhoto = null;
-      photoInput.value = "";
-      if (photoObjectUrl) {
-        URL.revokeObjectURL(photoObjectUrl);
-        photoObjectUrl = null;
-      }
-      photoPreviewImg.src = "";
-      photoPreview.classList.add("hidden");
       input.value = "";
       autoResize();
       input.focus();
