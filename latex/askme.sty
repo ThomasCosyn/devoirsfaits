@@ -54,6 +54,17 @@
 % URL complète d'un exercice
 \newcommand{\askme@url}[1]{\askme@scheme://\askme@domain/e/#1}
 
+% \askmeniveau{2nd} : déclaré la valeur par défaut du niveau pour les exercices
+% \begin{exo}[slug] du même fichier (lu par le CLI au moment du sync).
+\newcommand{\askmeniveau}[1]{}
+
+% Lien cliquable autonome (nouvel onglet) vers un exercice,
+% à utiliser dans vos propres environnements, ex. : \askmelink{mon-slug}
+\newcommand{\askmelink}[1]{%
+  \href{\askme@url{#1}}{\askme@icon}%
+  \ifaskme@showurl\,{\footnotesize\ttfamily\href{\askme@url{#1}}{\askme@url{#1}}}\fi
+}
+
 % Icône cliquable : boussole teal si fontawesome5 est chargé, sinon astérisque
 \newcommand{\askme@icon}{%
   \@ifpackageloaded{fontawesome5}{{\small\color{teal}\faIcon{compass}}}%
