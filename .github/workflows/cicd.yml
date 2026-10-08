@@ -71,12 +71,13 @@ jobs:
           SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
           SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCALEWAY_PROJECT_ID }}
           SCW_DEFAULT_REGION: ${{ vars.SCALEWAY_REGION || 'fr-par' }}
+          CONTAINER_NAME: ${{ vars.SCALEWAY_CONTAINER_NAME || 'devoirsfaits' }}
         run: |
           curl -o /usr/local/bin/scw https://github.com/scaleway/scaleway-cli/releases/latest/download/scw-linux-x86_64
           chmod +x /usr/local/bin/scw
-          CONTAINER_ID="$(scw container container list -o json | jq -r '.[] | select(.name == "${{ vars.SCALEWAY_CONTAINER_NAME || "devoirsfaits" }}") | .id')"
+          CONTAINER_ID="$(scw container container list -o json | jq -r --arg name "$CONTAINER_NAME" '.[] | select(.name == $name) | .id')"
           if [ -z "$CONTAINER_ID" ] || [ "$CONTAINER_ID" = "null" ]; then
-            echo "Container '${{ vars.SCALEWAY_CONTAINER_NAME || 'devoirsfaits' }}' introuvable" >&2
+            echo "Container '$CONTAINER_NAME' introuvable" >&2
             exit 1
           fi
           scw container container deploy "$CONTAINER_ID" wait
