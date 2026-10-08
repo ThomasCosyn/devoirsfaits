@@ -73,7 +73,8 @@ jobs:
           SCW_DEFAULT_REGION: ${{ vars.SCALEWAY_REGION || 'fr-par' }}
           CONTAINER_NAME: ${{ vars.SCALEWAY_CONTAINER_NAME || 'devoirsfaits' }}
         run: |
-          curl -fsSL -o /usr/local/bin/scw https://github.com/scaleway/scaleway-cli/releases/latest/download/scw-linux-x86_64
+          SCW_VERSION="$(curl -fsSL https://api.github.com/repos/scaleway/scaleway-cli/releases/latest | jq -r .tag_name | sed 's/^v//')"
+          curl -fsSL -o /usr/local/bin/scw "https://github.com/scaleway/scaleway-cli/releases/download/v${SCW_VERSION}/scaleway-cli_${SCW_VERSION}_linux_amd64"
           chmod +x /usr/local/bin/scw
           scw version
           CONTAINER_ID="$(scw container container list -o json | jq -r --arg name "$CONTAINER_NAME" '.[] | select(.name == $name) | .id')"
