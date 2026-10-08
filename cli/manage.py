@@ -46,6 +46,67 @@ def cmd_set_programme(args):
     print(f"Programme du niveau {args.niveau} mis à jour ({len(programme)} caractères).")
 
 
+def cmd_add_chapitre(args):
+    init_db()
+    niveau = query_one("SELECT id FROM devoirsfaits.niveaux WHERE nom = %s", (args.niveau,))
+    if not niveau:
+        sys.exit(f"Niveau {args.niveau} inconnu (créez-le avec add-niveau).")
+    contenu = args.contenu
+    if not contenu and args.fichier:
+        contenu = Path(args.fichier).read_text(encoding="utf-8")
+    if not contenu:
+        sys.exit("Fournis le contenu (argument ou --fichier).")
+    with get_db() as db:
+        db.execute(
+            """
+            INSERT INTO devoirsfaits.programme_chapitres (niveau_id, titre, contenu, ordre)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (niveau_id, titre) DO UPDATE
+            SET contenu = EXCLUDED.contenu, ordre = EXCLUDED.ordre
+            """,
+            (niveau["id"], args.titre, contenu, args.ordre),
+        )
+    print(f"Chapitre « {args.titre} » enregistré pour {args.niveau}.")
+
+
+def cmd_list_chapitres(args):
+    init_db()
+    rows = query_db(
+        """
+        SELECT n.nom AS niveau, c.titre, c.ordre, length(c.contenu) AS taille
+        FROM devoirsfaits.programme_chapitres c
+        JOIN devoirsfaits.niveaux n ON n.id = c.niveau_id
+        ORDER BY n.nom, c.ordre, c.id
+        """
+    )
+    for r in rows:
+        print(f"{r['niveau']:<8} ordre={r['ordre']:<3} {r['taille']:>6} car.  {r['titre']}")
+    if not rows:
+        print("Aucun chapitre enregistré.")
+
+
+def cmd_set_chapitre_exercice(args):
+    init_db()
+    chap = query_one(
+        """
+        SELECT c.id FROM devoirsfaits.programme_chapitres c
+        JOIN devoirsfaits.niveaux n ON n.id = c.niveau_id
+        WHERE c.titre = %s AND n.nom = %s
+        """,
+        (args.chapitre, args.niveau),
+    )
+    if not chap:
+        sys.exit(f"Chapitre « {args.chapitre} » inconnu pour le niveau {args.niveau}.")
+    with get_db() as db:
+        result = db.execute(
+            "UPDATE devoirsfaits.exercices SET chapitre_id = %s WHERE slug = %s",
+            (chap["id"], args.slug),
+        )
+        if result.rowcount == 0:
+            sys.exit(f"Exercice {args.slug} inconnu.")
+    print(f"Exercice {args.slug} rattaché au chapitre « {args.chapitre} ».")
+
+
 def annee_scolaire_courante() -> str:
     """Année scolaire en cours : sept-janv -> N/N+1, févr-août -> N-1/N."""
     today = datetime.date.today()
@@ -376,6 +437,23 @@ def main():
     p.add_argument("--programme", default="")
     p.add_argument("--fichier", help="Fichier texte contenant le programme")
     p.set_defaults(fn=cmd_set_programme)
+
+    p = sub.add_parser("add-chapitre", help="Ajouter/mettre à jour un chapitre de programme")
+    p.add_argument("niveau")
+    p.add_argument("titre")
+    p.add_argument("--contenu", default="")
+    p.add_argument("--fichier", help="Fichier texte contenant le chapitre")
+    p.add_argument("--ordre", type=int, default=0)
+    p.set_defaults(fn=cmd_add_chapitre)
+
+    p = sub.add_parser("list-chapitres", help="Lister les chapitres de programme")
+    p.set_defaults(fn=cmd_list_chapitres)
+
+    p = sub.add_parser("set-chapitre-exercice", help="Rattacher un exercice à un chapitre")
+    p.add_argument("slug")
+    p.add_argument("niveau")
+    p.add_argument("chapitre")
+    p.set_defaults(fn=cmd_set_chapitre_exercice)
 
     p = sub.add_parser("add-class", help="Créer une classe rattachée à un niveau")
     p.add_argument("classe")
