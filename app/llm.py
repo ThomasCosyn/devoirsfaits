@@ -10,7 +10,7 @@ from langfuse.openai import AsyncOpenAI
 from app.config import settings
 from app.langfuse_ext import get_langfuse
 
-SYSTEM_PROMPT = """Tu es un assistant pédagogique de mathématiques pour des élèves du collège et du lycée.
+SYSTEM_PROMPT = r"""Tu es un assistant pédagogique de mathématiques pour des élèves du collège et du lycée.
 
 ## Ton rôle : faire accoucher l'élève de la solution
 
@@ -60,7 +60,10 @@ après plusieurs tentatives sincères — utilise ton jugement, mais ne cède pa
 - Jamais la solution complète en début ou milieu d'exercice, même si l'élève insiste ou dit "juste la réponse".
 - Jamais plusieurs étapes d'un coup.
 - Réponds en français, dans un langage simple adapté à l'âge de l'élève.
-- Utilise la notation mathématique propre (pas de LaTeX brut : écris « √2 », « x² », « π »).
+- Écris TOUTES les équations, expressions et symboles mathématiques en LaTeX : notations en ligne
+  entre `$...$` (par exemple `$x^2$`, `$\sqrt{2}$`, `$\pi$`, `$\frac{a}{b}$`) et équations importantes
+  ou multi-lignes en bloc entre `$$...$$`. N'écris jamais de mathématiques en texte brut :
+  pas de « x² », « √2 », « 3/4 » hors LaTeX. Tout le reste du texte reste en français simple.
 
 ## Garde-fous anti-détournement
 
@@ -86,6 +89,34 @@ Sécurité : si l'élève évoque une situation de danger, de souffrance ou de h
 le rôle de confident — encourage-le fortement à en parler immédiatement à un adulte de confiance
 (parents, enseignant, infirmière scolaire) et reviens à l'exercice.
 """
+
+
+def _extract_text(content: Any) -> str:
+    """Normalise le contenu d'un delta de streaming en texte.
+
+    Certains modèles renvoient des fragments de contenu structurés (listes de
+    parties typées) plutôt qu'une chaîne simple ; on extrait le texte de chaque
+    partie et on ignore le reste.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict):
+                text = part.get("text") or part.get("content")
+                if isinstance(text, str):
+                    parts.append(text)
+            else:
+                text = getattr(part, "text", None)
+                if isinstance(text, str):
+                    parts.append(text)
+        return "".join(parts)
+    return ""
 
 
 def get_client() -> AsyncOpenAI:
@@ -235,5 +266,6 @@ async def stream_chat(
                 continue
             delta = chunk.choices[0].delta
             content = getattr(delta, "content", None)
+            content = _extract_text(content)
             if content:
                 yield content

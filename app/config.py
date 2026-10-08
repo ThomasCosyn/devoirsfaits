@@ -29,8 +29,9 @@ class Settings:
     )
 
     MISTRAL_API_KEY: str = _env("MISTRAL_API_KEY", "")
-    MISTRAL_BASE_URL: str = _env("MISTRAL_BASE_URL", "https://api.mistral.ai/v1")
-    MISTRAL_MODEL: str = _env("MISTRAL_MODEL", "mistral-medium-latest")
+    MISTRAL_BASE_URL: str = _env(
+        "MISTRAL_BASE_URL", "https://api.mistral.ai/v1")
+    MISTRAL_MODEL: str = _env("MISTRAL_MODEL", "mistral-large-4")
     MISTRAL_MAX_TOKENS: int = int(_env("MISTRAL_MAX_TOKENS", "1500"))
 
     LANGFUSE_PUBLIC_KEY: str = _env("LANGFUSE_PUBLIC_KEY", "")
