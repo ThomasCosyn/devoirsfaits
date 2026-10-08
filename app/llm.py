@@ -91,6 +91,34 @@ le rôle de confident — encourage-le fortement à en parler immédiatement à 
 """
 
 
+def _extract_text(content: Any) -> str:
+    """Normalise le contenu d'un delta de streaming en texte.
+
+    Certains modèles renvoient des fragments de contenu structurés (listes de
+    parties typées) plutôt qu'une chaîne simple ; on extrait le texte de chaque
+    partie et on ignore le reste.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict):
+                text = part.get("text") or part.get("content")
+                if isinstance(text, str):
+                    parts.append(text)
+            else:
+                text = getattr(part, "text", None)
+                if isinstance(text, str):
+                    parts.append(text)
+        return "".join(parts)
+    return ""
+
+
 def get_client() -> AsyncOpenAI:
     if not settings.MISTRAL_API_KEY:
         raise RuntimeError("MISTRAL_API_KEY non configurée")
@@ -238,5 +266,6 @@ async def stream_chat(
                 continue
             delta = chunk.choices[0].delta
             content = getattr(delta, "content", None)
+            content = _extract_text(content)
             if content:
                 yield content
