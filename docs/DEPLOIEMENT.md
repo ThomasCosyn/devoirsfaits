@@ -69,6 +69,22 @@ docker push rg.fr-par.scw.cloud/devoirsfaits/app:latest
    registrar vers l'hostname fourni.
 
 Option B — CLI (`scw` + `serverless framework`) : équivalent, voir la doc Scaleway
+
+Option C — CI/CD GitHub Actions (recommandée) : le workflow `.github/workflows/cicd.yml`
+build et déploie automatiquement à chaque push sur `main`.
+
+1. Dans le repo GitHub → **Settings > Secrets and variables > Actions** :
+   - Secrets :
+     - `SCW_SECRET_KEY` : clé API Scaleway (Console → IAM → API Keys)
+     - `SCALEWAY_PROJECT_ID` : ID du projet Scaleway hébergeant le container
+     - `SCALEWAY_REGISTRY_NAMESPACE` : nom du namespace Container Registry (ex. `devoirsfaits`)
+   - Variables (Settings > Secrets and variables > Actions > Variables) :
+     - `SCALEWAY_CONTAINER_NAME` : nom du Serverless Container (défaut : `devoirsfaits`)
+     - `SCALEWAY_REGION` : région (défaut : `fr-par`)
+2. Le workflow exécute : build de l'image → push vers le registry
+   (`app:latest` + `app:<sha>`) → `scw container container deploy` pour redéployer.
+3. Les pull requests exécutent uniquement les vérifications (lint/imports/syntaxe JS),
+   sans déployer.
 "Deploy a container".
 
 ## 3. Créer vos données (classes, élèves, exercices)
