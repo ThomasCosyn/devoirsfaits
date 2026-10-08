@@ -46,6 +46,105 @@ def cmd_set_programme(args):
     print(f"Programme du niveau {args.niveau} mis à jour ({len(programme)} caractères).")
 
 
+def cmd_add_chapitre(args):
+    init_db()
+    niveau = query_one("SELECT id FROM devoirsfaits.niveaux WHERE nom = %s", (args.niveau,))
+    if not niveau:
+        sys.exit(f"Niveau {args.niveau} inconnu (créez-le avec add-niveau).")
+    contenu = args.contenu
+    if not contenu and args.fichier:
+        contenu = Path(args.fichier).read_text(encoding="utf-8")
+    if not contenu:
+        sys.exit("Fournis le contenu (argument ou --fichier).")
+    with get_db() as db:
+        db.execute(
+            """
+            INSERT INTO devoirsfaits.programme_chapitres (niveau_id, titre, contenu, ordre, transversal)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (niveau_id, titre) DO UPDATE
+            SET contenu = EXCLUDED.contenu, ordre = EXCLUDED.ordre, transversal = EXCLUDED.transversal
+            """,
+            (niveau["id"], args.titre, contenu, args.ordre, args.transversal),
+        )
+    print(f"Chapitre « {args.titre} » enregistré pour {args.niveau}.")
+
+
+def cmd_list_chapitres(args):
+    init_db()
+    rows = query_db(
+        """
+        SELECT n.nom AS niveau, c.titre, c.ordre, length(c.contenu) AS taille
+        FROM devoirsfaits.programme_chapitres c
+        JOIN devoirsfaits.niveaux n ON n.id = c.niveau_id
+        ORDER BY n.nom, c.ordre, c.id
+        """
+    )
+    for r in rows:
+        print(f"{r['niveau']:<8} ordre={r['ordre']:<3} {r['taille']:>6} car.  {r['titre']}")
+    if not rows:
+        print("Aucun chapitre enregistré.")
+
+
+def cmd_set_chapitre_exercice(args):
+    """Rattache un exercice à un ou plusieurs chapitres (remplace les liaisons existantes)."""
+    init_db()
+    exo = query_one(
+        "SELECT id FROM devoirsfaits.exercices WHERE slug = %s", (args.slug,)
+    )
+    if not exo:
+        sys.exit(f"Exercice {args.slug} inconnu.")
+    ids = []
+    with get_db() as db:
+        for titre_chap in args.chapitres:
+            chap = query_one(
+                """
+                SELECT c.id, c.transversal FROM devoirsfaits.programme_chapitres c
+                JOIN devoirsfaits.niveaux n ON n.id = c.niveau_id
+                WHERE c.titre = %s AND n.nom = %s
+                """,
+                (titre_chap, args.niveau),
+            )
+            if not chap:
+                sys.exit(f"Chapitre « {titre_chap} » inconnu pour le niveau {args.niveau}.")
+            if not chap["transversal"]:
+                ids.append(chap["id"])
+        db.execute("DELETE FROM devoirsfaits.exercices_chapitres WHERE exercice_id = %s", (exo["id"],))
+        for chap_id in ids:
+            db.execute(
+                "INSERT INTO devoirsfaits.exercices_chapitres (exercice_id, chapitre_id) VALUES (%s, %s)",
+                (exo["id"], chap_id),
+            )
+    print(f"Exercice {args.slug} rattaché à {len(ids)} chapitre(s).")
+
+
+def cmd_import_chapitres(args):
+    """Importe tous les .txt d'un dossier : nom de fichier = titre du chapitre.
+    Convention : les fichiers préfixés « transversal- » sont injectés pour tous
+    les exercices ; les autres sont rattachables explicitement."""
+    init_db()
+    dossier = Path(args.dossier)
+    if not dossier.is_dir():
+        sys.exit(f"Dossier introuvable : {dossier}")
+    fichiers = sorted(dossier.glob("*.txt"))
+    if not fichiers:
+        sys.exit("Aucun fichier .txt dans ce dossier.")
+    for i, fic in enumerate(fichiers, start=1):
+        titre = fic.stem
+        transversal = titre.startswith("transversal-")
+        if transversal:
+            titre = titre[len("transversal-"):]
+        args_chap = argparse.Namespace(
+            niveau=args.niveau,
+            titre=titre,
+            contenu="",
+            fichier=str(fic),
+            ordre=i,
+            transversal=transversal,
+        )
+        cmd_add_chapitre(args_chap)
+    print(f"{len(fichiers)} chapitre(s) importé(s) pour {args.niveau}.")
+
+
 def annee_scolaire_courante() -> str:
     """Année scolaire en cours : sept-janv -> N/N+1, févr-août -> N-1/N."""
     today = datetime.date.today()
@@ -376,6 +475,29 @@ def main():
     p.add_argument("--programme", default="")
     p.add_argument("--fichier", help="Fichier texte contenant le programme")
     p.set_defaults(fn=cmd_set_programme)
+
+    p = sub.add_parser("add-chapitre", help="Ajouter/mettre à jour un chapitre de programme")
+    p.add_argument("niveau")
+    p.add_argument("titre")
+    p.add_argument("--contenu", default="")
+    p.add_argument("--fichier", help="Fichier texte contenant le chapitre")
+    p.add_argument("--ordre", type=int, default=0)
+    p.add_argument("--transversal", action="store_true", help="Chapitre injecté pour tous les exercices")
+    p.set_defaults(fn=cmd_add_chapitre)
+
+    p = sub.add_parser("import-chapitres", help="Importer tous les fichiers .txt d'un dossier comme chapitres")
+    p.add_argument("niveau")
+    p.add_argument("dossier")
+    p.set_defaults(fn=cmd_import_chapitres)
+
+    p = sub.add_parser("list-chapitres", help="Lister les chapitres de programme")
+    p.set_defaults(fn=cmd_list_chapitres)
+
+    p = sub.add_parser("set-chapitre-exercice", help="Rattacher un exercice à un ou plusieurs chapitres")
+    p.add_argument("slug")
+    p.add_argument("niveau")
+    p.add_argument("chapitres", nargs="+")
+    p.set_defaults(fn=cmd_set_chapitre_exercice)
 
     p = sub.add_parser("add-class", help="Créer une classe rattachée à un niveau")
     p.add_argument("classe")

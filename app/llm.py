@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
+import re
 from contextlib import nullcontext
 from typing import Any, AsyncIterator
 
@@ -119,6 +121,19 @@ def _extract_text(content: Any) -> str:
     return ""
 
 
+def _cached_tokens(usage: Any) -> int:
+    """Extrait le nombre de tokens prompt servis depuis le cache, quel que soit
+    le format renvoyé par l'API (prompt_tokens_details.cached_tokens ou
+    cache_read_input_tokens)."""
+    if isinstance(usage, dict):
+        details = usage.get("prompt_tokens_details") or {}
+        return details.get("cached_tokens") or usage.get("cache_read_input_tokens") or 0
+    details = getattr(usage, "prompt_tokens_details", None)
+    if details is not None:
+        return getattr(details, "cached_tokens", 0) or 0
+    return getattr(usage, "cache_read_input_tokens", 0) or 0
+
+
 def get_client() -> AsyncOpenAI:
     if not settings.MISTRAL_API_KEY:
         raise RuntimeError("MISTRAL_API_KEY non configurée")
@@ -128,15 +143,52 @@ def get_client() -> AsyncOpenAI:
     )
 
 
+def select_chapitres(programme: str, chapitres: list[dict] | None, exercice: dict) -> str:
+    """Construit la section programme à injecter dans le prompt.
+
+    Toujours inclus : chapitres transversaux (automatismes, logique...).
+    En plus : chapitres explicitement rattachés à l'exercice, sinon heuristique
+    sur les mots-clés des titres de chapitres (titre/énoncé de l'exercice).
+    Repli sur le programme complet si aucun chapitre n'existe pour le niveau.
+    """
+    chapitres = chapitres or []
+    if not chapitres:
+        return f"### Programme de l'année pour son niveau\n{programme}"
+
+    retenus: list[dict] = [c for c in chapitres if c.get("transversal")]
+    ids = set(exercice.get("chapitre_ids") or [])
+    if exercice.get("chapitre_id") is not None:
+        ids.add(exercice["chapitre_id"])
+    lies = [c for c in chapitres if c["id"] in ids and not c.get("transversal")]
+
+    if not lies:
+        titre = (exercice.get("titre") or "").lower()
+        enonce = (exercice.get("enonce") or "").lower()
+        for chap in chapitres:
+            if chap.get("transversal"):
+                continue
+            mots = [m for m in re.split(r"[^\wéèêàùûôîïç]+", (chap["titre"] or "").lower()) if len(m) >= 4]
+            if any(m in titre or m in enonce for m in mots):
+                lies.append(chap)
+
+    sections = [
+        f"### Chapitre du programme concerné : {c['titre']}\n{c['contenu']}"
+        for c in retenus + lies
+    ]
+    return "\n\n".join(sections) if sections else f"### Programme de l'année pour son niveau\n{programme}"
+
+
 def build_context_block(eleve: dict, exercice: dict) -> str:
+    programme_section = select_chapitres(
+        eleve.get("programme", ""), exercice.get("chapitres"), exercice
+    )
     context = f"""## Contexte de la session
 
 ### Élève
 - Nom : {eleve['prenom']} {eleve['nom']}
 - Classe : {eleve['classe_nom']} ({eleve['niveau_nom']}, année {eleve['annee_scolaire']})
 
-### Programme de l'année pour son niveau
-{eleve['programme']}
+{programme_section}
 """
     if exercice.get("slug") == "libre" or not exercice.get("enonce"):
         context += """
@@ -252,6 +304,8 @@ async def stream_chat(
     else:
         attr_ctx = nullcontext()
 
+    logger = logging.getLogger("devoirsfaits")
+
     with attr_ctx:
         stream = await client.chat.completions.create(
             model=settings.MISTRAL_MODEL,
@@ -259,9 +313,28 @@ async def stream_chat(
             max_tokens=settings.MISTRAL_MAX_TOKENS,
             temperature=0.3,
             stream=True,
+            stream_options={"include_usage": True},
         )
 
+        usage_logged = False
         async for chunk in stream:
+            usage = getattr(chunk, "usage", None)
+            if usage is not None:
+                prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+                cached = _cached_tokens(usage)
+                completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+                logger.info(
+                    "usage model=%s prompt=%d cached=%d completion=%d "
+                    "cache_hit=%s session=%s exercice=%s",
+                    settings.MISTRAL_MODEL,
+                    prompt_tokens,
+                    cached,
+                    completion_tokens,
+                    "oui" if cached else "non",
+                    session_id,
+                    metadata.get("exercice", "?"),
+                )
+                usage_logged = True
             if not chunk.choices:
                 continue
             delta = chunk.choices[0].delta
@@ -269,3 +342,8 @@ async def stream_chat(
             content = _extract_text(content)
             if content:
                 yield content
+        if not usage_logged:
+            logger.warning(
+                "usage absent de la réponse (stream_options ignoré ?) session=%s",
+                session_id,
+            )

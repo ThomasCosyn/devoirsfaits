@@ -48,6 +48,22 @@ CREATE TABLE IF NOT EXISTS devoirsfaits.exercices (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS devoirsfaits.programme_chapitres (
+    id SERIAL PRIMARY KEY,
+    niveau_id INTEGER NOT NULL REFERENCES devoirsfaits.niveaux(id),
+    titre TEXT NOT NULL,
+    contenu TEXT NOT NULL,
+    ordre INTEGER NOT NULL DEFAULT 0,
+    transversal BOOLEAN NOT NULL DEFAULT FALSE,
+    UNIQUE (niveau_id, titre)
+);
+
+CREATE TABLE IF NOT EXISTS devoirsfaits.exercices_chapitres (
+    exercice_id INTEGER NOT NULL REFERENCES devoirsfaits.exercices(id) ON DELETE CASCADE,
+    chapitre_id INTEGER NOT NULL REFERENCES devoirsfaits.programme_chapitres(id) ON DELETE CASCADE,
+    PRIMARY KEY (exercice_id, chapitre_id)
+);
+
 CREATE TABLE IF NOT EXISTS devoirsfaits.conversations (
     id SERIAL PRIMARY KEY,
     eleve_id INTEGER NOT NULL REFERENCES devoirsfaits.eleves(id),
@@ -69,6 +85,8 @@ CREATE INDEX IF NOT EXISTS idx_messages_conversation ON devoirsfaits.messages (c
 """
 
 _MIGRATIONS = (
+    "ALTER TABLE devoirsfaits.exercices ADD COLUMN IF NOT EXISTS chapitre_id INTEGER REFERENCES devoirsfaits.programme_chapitres(id)",
+    "ALTER TABLE devoirsfaits.programme_chapitres ADD COLUMN IF NOT EXISTS transversal BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE devoirsfaits.conversations ALTER COLUMN exercice_id DROP NOT NULL",
     "ALTER TABLE devoirsfaits.messages ADD COLUMN IF NOT EXISTS image_transcript TEXT",
     """

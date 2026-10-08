@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingRes
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
-from app.db import get_db, query_one, init_db
+from app.db import get_db, query_db, query_one, init_db
 from app.llm import (
     build_context_block,
     compress_image_to_dataurl,
@@ -43,15 +43,31 @@ def _get_exercice(slug: str):
             "classe_nom": None,
             "annee_scolaire": None,
         }
-    return query_one(
+    exo = query_one(
         """
         SELECT x.id, x.niveau_id, x.slug, x.titre, x.enonce, x.correction,
-               n.nom AS niveau_nom
+               x.chapitre_id, n.nom AS niveau_nom, n.programme
         FROM devoirsfaits.exercices x JOIN devoirsfaits.niveaux n ON n.id = x.niveau_id
         WHERE x.slug = %s
         """,
         (slug,),
     )
+    if exo:
+        exo["chapitres"] = query_db(
+            """
+            SELECT id, titre, contenu, transversal FROM devoirsfaits.programme_chapitres
+            WHERE niveau_id = %s ORDER BY transversal DESC, ordre, id
+            """,
+            (exo["niveau_id"],),
+        )
+        exo["chapitre_ids"] = [
+            r["chapitre_id"]
+            for r in query_db(
+                "SELECT chapitre_id FROM devoirsfaits.exercices_chapitres WHERE exercice_id = %s",
+                (exo["id"],),
+            )
+        ]
+    return exo
 
 
 def _get_or_create_conversation(db, eleve_id: int, exercice_id: int | None) -> int:
