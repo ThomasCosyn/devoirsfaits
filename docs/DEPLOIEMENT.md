@@ -75,7 +75,8 @@ build et déploie automatiquement à chaque push sur `main`.
 
 1. Dans le repo GitHub → **Settings > Secrets and variables > Actions** :
    - Secrets :
-     - `SCW_SECRET_KEY` : clé API Scaleway (Console → IAM → API Keys)
+     - `SCW_ACCESS_KEY` : access key de la paire de clés API Scaleway (ex. `SCWXXXXXXXXXXXXXXXXX`)
+     - `SCW_SECRET_KEY` : secret key de la paire de clés API Scaleway (Console → IAM → API Keys)
      - `SCALEWAY_PROJECT_ID` : ID du projet Scaleway hébergeant le container
      - `SCALEWAY_REGISTRY_NAMESPACE` : nom du namespace Container Registry (ex. `devoirsfaits`)
    - Variables (Settings > Secrets and variables > Actions > Variables) :
