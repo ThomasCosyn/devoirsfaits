@@ -77,6 +77,8 @@ build et déploie automatiquement à chaque push sur `main`.
    - Secrets :
      - `SCW_ACCESS_KEY` : access key de la paire de clés API Scaleway (ex. `SCWXXXXXXXXXXXXXXXXX`)
      - `SCW_SECRET_KEY` : secret key de la paire de clés API Scaleway (Console → IAM → API Keys)
+     - `SCALEWAY_ORGANIZATION_ID` : ID de l'organisation Scaleway (Console → IAM → Organizations, ou visible dans la console
+       à la création de la clé API)
      - `SCALEWAY_PROJECT_ID` : ID du projet Scaleway hébergeant le container
      - `SCALEWAY_REGISTRY_NAMESPACE` : nom du namespace Container Registry (ex. `devoirsfaits`)
    - Variables (Settings > Secrets and variables > Actions > Variables) :
