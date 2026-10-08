@@ -73,8 +73,9 @@ jobs:
           SCW_DEFAULT_REGION: ${{ vars.SCALEWAY_REGION || 'fr-par' }}
           CONTAINER_NAME: ${{ vars.SCALEWAY_CONTAINER_NAME || 'devoirsfaits' }}
         run: |
-          curl -o /usr/local/bin/scw https://github.com/scaleway/scaleway-cli/releases/latest/download/scw-linux-x86_64
+          curl -fsSL -o /usr/local/bin/scw https://github.com/scaleway/scaleway-cli/releases/latest/download/scw-linux-x86_64
           chmod +x /usr/local/bin/scw
+          scw version
           CONTAINER_ID="$(scw container container list -o json | jq -r --arg name "$CONTAINER_NAME" '.[] | select(.name == $name) | .id')"
           if [ -z "$CONTAINER_ID" ] || [ "$CONTAINER_ID" = "null" ]; then
             echo "Container '$CONTAINER_NAME' introuvable" >&2
