@@ -107,6 +107,8 @@
     if (busy) return;
     addMsg("user", message || "Voici une photo de mon cahier.", photoObjectUrl);
     clearPendingPhoto();
+    input.value = "";
+    autoResize();
     setBusy(true);
     quickstart.classList.add("hidden");
 
