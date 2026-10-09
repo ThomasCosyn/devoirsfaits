@@ -87,4 +87,4 @@ jobs:
             echo "Container '$CONTAINER_NAME' introuvable ou plusieurs containers portent ce nom" >&2
             exit 1
           fi
-          scw container container redeploy "$CONTAINER_ID" wait
+          scw container container redeploy "$CONTAINER_ID" --wait
