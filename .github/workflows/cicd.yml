@@ -79,9 +79,12 @@ jobs:
           curl -fsSL -o /usr/local/bin/scw "https://github.com/scaleway/scaleway-cli/releases/download/v${SCW_VERSION}/scaleway-cli_${SCW_VERSION}_linux_amd64"
           chmod +x /usr/local/bin/scw
           scw version
-          CONTAINER_ID="$(scw container container list -o json | jq -r --arg name "$CONTAINER_NAME" '.[] | select(.name == $name) | .id')"
+          scw container container list -o json > /tmp/containers.json
+          echo "Containers visibles dans le projet :"
+          jq -r '.[] | "\(.name) → \(.id)"' /tmp/containers.json
+          CONTAINER_ID="$(jq -r --arg name "$CONTAINER_NAME" '[.[] | select(.name == $name) | .id] | if length == 1 then .[0] else empty end' /tmp/containers.json)"
           if [ -z "$CONTAINER_ID" ] || [ "$CONTAINER_ID" = "null" ]; then
-            echo "Container '$CONTAINER_NAME' introuvable" >&2
+            echo "Container '$CONTAINER_NAME' introuvable ou plusieurs containers portent ce nom" >&2
             exit 1
           fi
           scw container container redeploy "$CONTAINER_ID" wait
