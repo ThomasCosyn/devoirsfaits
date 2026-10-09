@@ -462,7 +462,7 @@ def cmd_seed_demo(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Gestion Devoirs Faits")
+    parser = argparse.ArgumentParser(description="Gestion exo")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("add-niveau", help="Créer un niveau (ex: 2nde, tsti2d)")

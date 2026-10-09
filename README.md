@@ -1,4 +1,4 @@
-# Devoirs Faits — Assistant pédagogique pour feuilles d'exercices
+# exo — Assistant pédagogique pour feuilles d'exercices
 
 Assistant conversationnel destiné aux élèves bloqués sur une feuille d'exercices (LaTeX compilée en PDF).
 Un petit symbole cliquable inséré à côté de chaque énoncé ouvre l'assistant, qui connaît déjà

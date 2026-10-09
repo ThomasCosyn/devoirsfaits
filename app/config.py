@@ -21,7 +21,7 @@ def _env(name: str, default: str = "") -> str:
 class Settings:
     BASE_DIR = BASE_DIR
 
-    APP_NAME: str = "Devoirs Faits"
+    APP_NAME: str = "exo"
     SECRET_KEY: str = _env("SECRET_KEY", "dev-secret-change-me")
     DATABASE_URL: str = _env(
         "DATABASE_URL",
