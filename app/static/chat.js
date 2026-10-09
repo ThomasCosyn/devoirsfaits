@@ -159,7 +159,6 @@
       setBusy(false);
       input.value = "";
       autoResize();
-      input.focus();
     }
   }
 

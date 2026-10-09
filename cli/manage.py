@@ -6,6 +6,8 @@ import argparse
 import datetime
 import getpass
 import re
+import secrets
+import string
 import sys
 from pathlib import Path
 
@@ -212,6 +214,24 @@ def cmd_add_student(args):
             (classe["id"], args.login, args.nom, args.prenom, hash_password(password)),
         )
     print(f"Élève {args.prenom} {args.nom} créé — login : {args.login}")
+
+
+def _random_password(length: int = 6) -> str:
+    alphabet = string.ascii_lowercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def cmd_reset_password(args):
+    eleve = query_one("SELECT id, login, nom, prenom FROM devoirsfaits.eleves WHERE login = %s", (args.login,))
+    if not eleve:
+        sys.exit(f"Login {args.login} inconnu.")
+    password = _random_password()
+    with get_db() as db:
+        db.execute(
+            "UPDATE devoirsfaits.eleves SET password_hash = %s WHERE id = %s",
+            (hash_password(password), eleve["id"]),
+        )
+    print(f"{eleve['prenom']} {eleve['nom']} — login : {args.login} — mot de passe : {password}")
 
 
 ELEVE_LINE_RE = re.compile(r"^(.*?);\s*([MF])\s*$")
@@ -524,6 +544,9 @@ def main():
     p.add_argument("--password", help="Sinon, demandé interactivement")
     p.set_defaults(fn=cmd_add_student)
 
+    p = sub.add_parser("reset-password", help="Réinitialiser le mot de passe d'un élève (génère 6 caractères aléatoires)")
+    p.add_argument("login")
+    p.set_defaults(fn=cmd_reset_password)
     p = sub.add_parser("import-eleves", help="Importer une classe depuis un fichier eleves.txt")
     p.add_argument("classe", help="Classe cible (doit exister)")
     p.add_argument("fichier", help="Fichier eleves.txt (1re ligne = niveau)")
