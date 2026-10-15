@@ -7,7 +7,7 @@ import re
 from contextlib import nullcontext
 from typing import Any, AsyncIterator
 
-from langfuse.openai import AsyncOpenAI
+from openai import AsyncOpenAI
 
 from app.config import settings
 from app.langfuse_ext import get_langfuse
@@ -308,43 +308,81 @@ async def stream_chat(
     logger = logging.getLogger("devoirsfaits")
 
     with attr_ctx:
-        stream = await client.chat.completions.create(
-            model=settings.MISTRAL_MODEL,
-            messages=api_messages,
-            max_tokens=settings.MISTRAL_MAX_TOKENS,
-            temperature=0.3,
-            stream=True,
-            stream_options={"include_usage": True},
-        )
-
-        usage_logged = False
-        async for chunk in stream:
-            usage = getattr(chunk, "usage", None)
-            if usage is not None:
-                prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
-                cached = _cached_tokens(usage)
-                completion_tokens = getattr(usage, "completion_tokens", 0) or 0
-                logger.info(
-                    "usage model=%s prompt=%d cached=%d completion=%d "
-                    "cache_hit=%s session=%s exercice=%s",
-                    settings.MISTRAL_MODEL,
-                    prompt_tokens,
-                    cached,
-                    completion_tokens,
-                    "oui" if cached else "non",
-                    session_id,
-                    metadata.get("exercice", "?"),
-                )
-                usage_logged = True
-            if not chunk.choices:
-                continue
-            delta = chunk.choices[0].delta
-            content = getattr(delta, "content", None)
-            content = _extract_text(content)
-            if content:
-                yield content
-        if not usage_logged:
-            logger.warning(
-                "usage absent de la réponse (stream_options ignoré ?) session=%s",
-                session_id,
+        generation = None
+        if lf is not None:
+            generation = lf.start_observation(
+                name="chat-completion",
+                as_type="generation",
+                input=api_messages,
+                model=settings.MISTRAL_MODEL,
+                model_parameters={
+                    "max_tokens": settings.MISTRAL_MAX_TOKENS,
+                    "temperature": 0.3,
+                },
             )
+
+        collected: list[str] = []
+        usage_details: dict[str, int] = {}
+        try:
+            stream = await client.chat.completions.create(
+                model=settings.MISTRAL_MODEL,
+                messages=api_messages,
+                max_tokens=settings.MISTRAL_MAX_TOKENS,
+                temperature=0.3,
+                stream=True,
+                stream_options={"include_usage": True},
+            )
+
+            usage_logged = False
+            async for chunk in stream:
+                usage = getattr(chunk, "usage", None)
+                if usage is not None:
+                    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+                    cached = _cached_tokens(usage)
+                    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+                    usage_details = {
+                        "input": prompt_tokens,
+                        "input_cached": cached,
+                        "output": completion_tokens,
+                    }
+                    logger.info(
+                        "usage model=%s prompt=%d cached=%d completion=%d "
+                        "cache_hit=%s session=%s exercice=%s",
+                        settings.MISTRAL_MODEL,
+                        prompt_tokens,
+                        cached,
+                        completion_tokens,
+                        "oui" if cached else "non",
+                        session_id,
+                        metadata.get("exercice", "?"),
+                    )
+                    usage_logged = True
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                content = getattr(delta, "content", None)
+                content = _extract_text(content)
+                if content:
+                    collected.append(content)
+                    yield content
+            if not usage_logged:
+                logger.warning(
+                    "usage absent de la réponse (stream_options ignoré ?) session=%s",
+                    session_id,
+                )
+        except Exception:
+            if generation is not None:
+                generation.update(
+                    output="".join(collected),
+                    level="ERROR",
+                    status_message="échec du streaming de la complétion",
+                )
+                generation.end()
+            raise
+
+        if generation is not None:
+            generation.update(
+                output="".join(collected),
+                usage_details=usage_details or None,
+            )
+            generation.end()
