@@ -342,7 +342,7 @@ async def stream_chat(
                     completion_tokens = getattr(usage, "completion_tokens", 0) or 0
                     usage_details = {
                         "input": prompt_tokens,
-                        "cache_read_input": cached,
+                        "input_cached": cached,
                         "output": completion_tokens,
                     }
                     logger.info(
