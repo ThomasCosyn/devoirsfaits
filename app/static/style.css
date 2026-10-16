@@ -403,7 +403,7 @@ body {
   cursor: pointer;
 }
 
-.photo-preview.hidden, .typing.hidden, .quickstart.hidden { display: none; }
+.photo-preview.hidden, .typing.hidden, .quickstart.hidden, .hidden { display: none; }
 
 /* ---------- Rendu markdown / LaTeX ---------- */
 .msg-body :is(p, ul, ol) { margin: 0 0 8px; }
