@@ -59,6 +59,23 @@
     return body;
   }
 
+  function showEnonce() {
+    const source = document.getElementById("enonce-source");
+    const text = source ? source.textContent.trim() : "";
+    if (!text) return;
+    const div = document.createElement("div");
+    div.className = "msg enonce";
+    const label = document.createElement("div");
+    label.className = "enonce-label";
+    label.textContent = "Énoncé";
+    const body = document.createElement("div");
+    body.className = "msg-body";
+    renderRich(body, text);
+    div.appendChild(label);
+    div.appendChild(body);
+    chat.appendChild(div);
+  }
+
   async function loadHistory() {
     try {
       const res = await fetch(`/api/chat/${slug}/history`);
@@ -236,12 +253,17 @@
       try {
         const res = await fetch(`/api/chat/${slug}/reset`, { method: "POST" });
         if (!res.ok) throw new Error();
-        chat.textContent = "";
-        quickstart.classList.remove("hidden");
+        resetChat();
       } catch {
         addMsg("bot", "Impossible de réinitialiser la conversation. Recharge la page.");
       }
     });
+  }
+
+  function resetChat() {
+    chat.textContent = "";
+    showEnonce();
+    quickstart.classList.remove("hidden");
   }
 
   quickstart.querySelectorAll("button").forEach((btn) => {
@@ -249,4 +271,5 @@
   });
 
   loadHistory();
+  showEnonce();
 })();

@@ -213,6 +213,27 @@ body {
   flex-shrink: 0;
 }
 
+.msg.enonce {
+  align-self: stretch;
+  max-width: none;
+  background: var(--card);
+  border: 1px solid #d9e4dd;
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.enonce-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.msg.enonce .msg-body { color: var(--ink); }
+
 .typing span {
   width: 7px; height: 7px;
   background: #b9b3a7;
