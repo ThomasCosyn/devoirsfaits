@@ -19,13 +19,31 @@ EXO_OPT_RE_TEMPLATE = (
 
 # Un slug : lettres minuscules (accents inclus), chiffres et tirets.
 # Un mot commençant par une majuscule est considéré comme un titre, pas un slug.
-SLUG_RE = re.compile(r"^[a-zà-öø-ÿ\u0153]([a-zà-öø-ÿ\u0153\u00e0-\u00ff0-9]*)(-[a-zà-öø-ÿ\u0153\u00e0-\u00ff0-9]+)*$", re.UNICODE)
+SLUG_RE = re.compile(r"^[a-zà-öø-ÿœ][a-zà-öø-ÿœà-ÿ0-9]*(-[a-zà-öø-ÿœà-ÿ0-9]+)*$", re.UNICODE)
+
 ASKMECORRECTION_RE = re.compile(
     r"\\begin\{askmecorrection\}\{([^}]*)\}(.*?)\\end\{askmecorrection\}",
     re.S,
 )
 
-_MATH_REPLACEMENTS: list[tuple[str, str]] = [
+# Segment math (inline ou display) : préservé tel quel pour le rendu KaTeX.
+_MATH_SEGMENT_RE = re.compile(r"(\$\$.*?\$\$|\$[^$]*\$)", re.S)
+
+# Nettoyage du LaTeX de mise en page, appliqué hors des segments math.
+_LAYOUT_REPLACEMENTS: list[tuple[str, str]] = [
+    (r"\\par\b", "\n"),
+    (r"\\\\", "\n"),
+    (r"\\textbf\{([^{}]*)\}", r"\1"),
+    (r"\\textit\{([^{}]*)\}", r"\1"),
+    (r"\\text\{([^{}]*)\}", r"\1"),
+    (r"\\item\b", "- "),
+    (r"\\begin\{itemize\}|\\begin\{enumerate\}", ""),
+    (r"\\end\{itemize\}|\\end\{enumerate\}", ""),
+    (r"~", " "),
+]
+
+# Repli pour les maths hors $...$ : macros courantes converties en Unicode.
+_BARE_MATH_REPLACEMENTS: list[tuple[str, str]] = [
     (r"\\dfrac\{([^{}]*)\}\{([^{}]*)\}", r"\1/\2"),
     (r"\\frac\{([^{}]*)\}\{([^{}]*)\}", r"\1/\2"),
     (r"\\sqrt\{([^{}]*)\}", r"√\1"),
@@ -45,20 +63,8 @@ _MATH_REPLACEMENTS: list[tuple[str, str]] = [
     (r"\\;", " "),
     (r"\\:", " "),
     (r"\\!", ""),
-    (r"\\,", " "),
     (r"\\quad", "  "),
     (r"\\qquad", "   "),
-    (r"\\par\b", "\n"),
-    (r"\\\\", "\n"),
-    (r"\\textbf\{([^{}]*)\}", r"\1"),
-    (r"\\textit\{([^{}]*)\}", r"\1"),
-    (r"\\text\{([^{}]*)\}", r"\1"),
-    (r"\\item\b", "- "),
-    (r"\$([^$]*)\$", r"\1"),
-    (r"\$\$([^$]*)\$\$", r"\1"),
-    (r"\\begin\{itemize\}|\\begin\{enumerate\}", ""),
-    (r"\\end\{itemize\}|\\end\{enumerate\}", ""),
-    (r"~", " "),
 ]
 
 _SIMPLE_COMMANDS = [
@@ -81,13 +87,23 @@ def _strip_tikz(text: str) -> str:
 
 
 def latex_to_text(tex: str) -> str:
+    """Texte lisible hors maths, segments $...$ préservés pour le rendu KaTeX."""
     out = _strip_tikz(tex)
-    for pattern, repl in _MATH_REPLACEMENTS:
-        out = re.sub(pattern, repl, out)
-    for cmd in _SIMPLE_COMMANDS:
-        out = re.sub(r"\\" + cmd + r"\s*(\{[^}]*\})?", "", out)
-    out = re.sub(r"\\href\{[^}]*\}\{([^}]*)\}", r"\1", out)
-    out = re.sub(r"\\url\{([^}]*)\}", r"\1", out)
+    parts = _MATH_SEGMENT_RE.split(out)
+    for i, part in enumerate(parts):
+        if i % 2 == 1:
+            continue
+        for pattern, repl in _LAYOUT_REPLACEMENTS:
+            part = re.sub(pattern, repl, part)
+        for pattern, repl in _BARE_MATH_REPLACEMENTS:
+            part = re.sub(pattern, repl, part)
+        for cmd in _SIMPLE_COMMANDS:
+            part = re.sub(r"\\" + cmd + r"\s*(\{[^}]*\})?", "", part)
+        part = re.sub(r"\\href\{[^}]*\}\{([^}]*)\}", r"\1", part)
+        part = re.sub(r"\\url\{([^}]*)\}", r"\1", part)
+        parts[i] = part
+    out = "".join(parts)
+    out = re.sub(r"^[ \t]+", "", out, flags=re.M)
     out = re.sub(r"[ \t]+\n", "\n", out)
     out = re.sub(r"\n{3,}", "\n\n", out)
     return out.strip()
