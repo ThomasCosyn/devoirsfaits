@@ -54,9 +54,9 @@
   }
 
   function addMsg(role, text, imageUrl) {
+    const isBot = role !== "user";
     const div = document.createElement("div");
     div.className = "msg " + (isBot ? "bot" : "user");
-    const isBot = role !== "user";
     if (imageUrl) {
       const thumb = document.createElement("img");
       thumb.className = "msg-photo";
