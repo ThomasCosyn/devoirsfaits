@@ -36,6 +36,11 @@
     }
   }
 
+  function whenKatexReady(cb) {
+    if (window.renderMathInElement) return cb();
+    window.addEventListener("load", cb);
+  }
+
   function addMsg(role, text, imageUrl) {
     const div = document.createElement("div");
     div.className = "msg " + (role === "user" ? "user" : "bot");
@@ -271,5 +276,5 @@
   });
 
   loadHistory();
-  showEnonce();
+  whenKatexReady(showEnonce);
 })();
