@@ -123,8 +123,10 @@
     photoInput.disabled = state;
     if (state) {
       input.blur();
+      input.classList.add("busy-hidden");
       showTyping();
     } else {
+      input.classList.remove("busy-hidden");
       hideTyping();
     }
     if (!state) scrollBottom();
