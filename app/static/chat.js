@@ -55,7 +55,8 @@
 
   function addMsg(role, text, imageUrl) {
     const div = document.createElement("div");
-    div.className = "msg " + (role === "user" ? "user" : "bot");
+    div.className = "msg " + (isBot ? "bot" : "user");
+    const isBot = role !== "user";
     if (imageUrl) {
       const thumb = document.createElement("img");
       thumb.className = "msg-photo";
@@ -65,7 +66,7 @@
     }
     const body = document.createElement("div");
     body.className = "msg-body";
-    if (role === "bot") {
+    if (isBot) {
       renderRich(body, text);
     } else {
       body.textContent = text;
