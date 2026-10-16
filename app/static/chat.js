@@ -38,7 +38,13 @@
 
   function whenKatexReady(cb) {
     if (window.renderMathInElement) return cb();
-    window.addEventListener("load", cb);
+    window.addEventListener("load", cb, { once: true });
+    const iv = setInterval(() => {
+      if (window.renderMathInElement) {
+        clearInterval(iv);
+        cb();
+      }
+    }, 50);
   }
 
   function addMsg(role, text, imageUrl) {
