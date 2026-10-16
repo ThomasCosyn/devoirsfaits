@@ -36,9 +36,27 @@
     }
   }
 
+  function whenKatexReady(cb) {
+    let called = false;
+    const run = () => {
+      if (called) return;
+      called = true;
+      cb();
+    };
+    if (window.renderMathInElement) return run();
+    window.addEventListener("load", run, { once: true });
+    const iv = setInterval(() => {
+      if (window.renderMathInElement) {
+        clearInterval(iv);
+        run();
+      }
+    }, 50);
+  }
+
   function addMsg(role, text, imageUrl) {
+    const isBot = role !== "user";
     const div = document.createElement("div");
-    div.className = "msg " + (role === "user" ? "user" : "bot");
+    div.className = "msg " + (isBot ? "bot" : "user");
     if (imageUrl) {
       const thumb = document.createElement("img");
       thumb.className = "msg-photo";
@@ -48,7 +66,7 @@
     }
     const body = document.createElement("div");
     body.className = "msg-body";
-    if (role === "bot") {
+    if (isBot) {
       renderRich(body, text);
     } else {
       body.textContent = text;
@@ -57,6 +75,23 @@
     chat.appendChild(div);
     scrollBottom();
     return body;
+  }
+
+  function showEnonce() {
+    const source = document.getElementById("enonce-source");
+    const text = source ? source.textContent.trim() : "";
+    if (!text) return;
+    const div = document.createElement("div");
+    div.className = "msg enonce";
+    const label = document.createElement("div");
+    label.className = "enonce-label";
+    label.textContent = "Énoncé";
+    const body = document.createElement("div");
+    body.className = "msg-body";
+    renderRich(body, text);
+    div.appendChild(label);
+    div.appendChild(body);
+    chat.appendChild(div);
   }
 
   async function loadHistory() {
@@ -99,7 +134,14 @@
     sendBtn.disabled = state;
     input.disabled = state;
     photoInput.disabled = state;
-    if (state) showTyping(); else hideTyping();
+    if (state) {
+      input.blur();
+      input.classList.add("busy-hidden");
+      showTyping();
+    } else {
+      input.classList.remove("busy-hidden");
+      hideTyping();
+    }
     if (!state) scrollBottom();
   }
 
@@ -236,17 +278,25 @@
       try {
         const res = await fetch(`/api/chat/${slug}/reset`, { method: "POST" });
         if (!res.ok) throw new Error();
-        chat.textContent = "";
-        quickstart.classList.remove("hidden");
+        resetChat();
       } catch {
         addMsg("bot", "Impossible de réinitialiser la conversation. Recharge la page.");
       }
     });
   }
 
+  function resetChat() {
+    chat.textContent = "";
+    showEnonce();
+    quickstart.classList.remove("hidden");
+  }
+
   quickstart.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => send(btn.dataset.msg, null));
   });
 
-  loadHistory();
+  whenKatexReady(() => {
+    loadHistory();
+    showEnonce();
+  });
 })();

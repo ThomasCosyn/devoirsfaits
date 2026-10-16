@@ -21,10 +21,14 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "CMU Sans Serif", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background: var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+}
+
+.chat-messages, .chat-input, .quickstart, .chat-header {
+  font-size: 18px;
 }
 
 /* ---------- Login ---------- */
@@ -139,7 +143,7 @@ body {
 }
 
 .chat-header-info { display: flex; flex-direction: column; min-width: 0; }
-.chat-header-info strong { font-size: 15px; }
+.chat-header-info strong { font-size: 17px; }
 .chat-header-info span { font-size: 12px; color: var(--muted); }
 
 .header-actions { display: flex; align-items: center; gap: 2px; }
@@ -177,8 +181,8 @@ body {
   max-width: 85%;
   padding: 10px 14px;
   border-radius: var(--radius);
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 18px;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-wrap: break-word;
 }
@@ -213,6 +217,27 @@ body {
   flex-shrink: 0;
 }
 
+.msg.enonce {
+  align-self: stretch;
+  max-width: none;
+  background: var(--card);
+  border: 1px solid #d9e4dd;
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.enonce-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.msg.enonce .msg-body { color: var(--ink); }
+
 .typing span {
   width: 7px; height: 7px;
   background: #b9b3a7;
@@ -241,8 +266,8 @@ body {
   border: 1.5px solid var(--accent-2);
   color: var(--accent);
   border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 13px;
+  padding: 8px 16px;
+  font-size: 15px;
   cursor: pointer;
 }
 
@@ -279,7 +304,7 @@ body {
   border: none;
   background: transparent;
   padding: 12px 16px 6px;
-  font-size: 16px;
+  font-size: 18px;
   font-family: inherit;
   line-height: 1.45;
   resize: none;
@@ -289,6 +314,14 @@ body {
 }
 
 .composer textarea:focus { outline: none; }
+
+.composer textarea:disabled {
+  cursor: default;
+}
+
+.composer textarea.busy-hidden {
+  visibility: hidden;
+}
 
 .composer textarea::placeholder { color: #a8a29a; }
 
@@ -382,7 +415,7 @@ body {
   cursor: pointer;
 }
 
-.photo-preview.hidden, .typing.hidden, .quickstart.hidden { display: none; }
+.photo-preview.hidden, .typing.hidden, .quickstart.hidden, .hidden { display: none; }
 
 /* ---------- Rendu markdown / LaTeX ---------- */
 .msg-body :is(p, ul, ol) { margin: 0 0 8px; }
