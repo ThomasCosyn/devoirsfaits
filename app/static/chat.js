@@ -37,12 +37,18 @@
   }
 
   function whenKatexReady(cb) {
-    if (window.renderMathInElement) return cb();
-    window.addEventListener("load", cb, { once: true });
+    let called = false;
+    const run = () => {
+      if (called) return;
+      called = true;
+      cb();
+    };
+    if (window.renderMathInElement) return run();
+    window.addEventListener("load", run, { once: true });
     const iv = setInterval(() => {
       if (window.renderMathInElement) {
         clearInterval(iv);
-        cb();
+        run();
       }
     }, 50);
   }
