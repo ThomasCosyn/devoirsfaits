@@ -280,6 +280,8 @@
     btn.addEventListener("click", () => send(btn.dataset.msg, null));
   });
 
-  loadHistory();
-  whenKatexReady(showEnonce);
+  whenKatexReady(() => {
+    loadHistory();
+    showEnonce();
+  });
 })();
