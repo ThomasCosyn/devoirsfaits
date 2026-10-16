@@ -121,7 +121,12 @@
     sendBtn.disabled = state;
     input.disabled = state;
     photoInput.disabled = state;
-    if (state) showTyping(); else hideTyping();
+    if (state) {
+      input.blur();
+      showTyping();
+    } else {
+      hideTyping();
+    }
     if (!state) scrollBottom();
   }
 

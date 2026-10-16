@@ -315,6 +315,11 @@ body {
 
 .composer textarea:focus { outline: none; }
 
+.composer textarea:disabled {
+  caret-color: transparent;
+  cursor: default;
+}
+
 .composer textarea::placeholder { color: #a8a29a; }
 
 .composer-actions {
