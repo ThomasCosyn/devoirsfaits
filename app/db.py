@@ -123,6 +123,7 @@ _MIGRATIONS = (
     END
     $$
     """,
+    "ALTER TABLE devoirsfaits.eleves ADD COLUMN IF NOT EXISTS est_prof BOOLEAN NOT NULL DEFAULT FALSE",
     """
     DO $$
     BEGIN

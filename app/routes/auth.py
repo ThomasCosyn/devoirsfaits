@@ -22,7 +22,7 @@ def get_current_eleve(request: Request):
         return None
     return query_one(
         """
-        SELECT e.id, e.login, e.nom, e.prenom,
+        SELECT e.id, e.login, e.nom, e.prenom, e.est_prof,
                c.nom AS classe_nom, c.id AS classe_id,
                c.annee_scolaire, n.id AS niveau_id, n.nom AS niveau_nom, n.programme
         FROM devoirsfaits.eleves e

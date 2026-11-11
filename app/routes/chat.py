@@ -70,6 +70,14 @@ def _get_exercice(slug: str):
     return exo
 
 
+def _niveau_interdit(eleve, exercice) -> bool:
+    if exercice["niveau_id"] is None:
+        return False
+    if eleve.get("est_prof"):
+        return False
+    return exercice["niveau_id"] != eleve["niveau_id"]
+
+
 def _get_or_create_conversation(db, eleve_id: int, exercice_id: int | None) -> int:
     if exercice_id is not None:
         row = db.execute(
@@ -191,7 +199,7 @@ async def chat_reset(request: Request, slug: str):
     exercice = _get_exercice(slug)
     if not exercice:
         raise HTTPException(status_code=404, detail="Exercice inconnu")
-    if exercice["niveau_id"] is not None and exercice["niveau_id"] != eleve["niveau_id"]:
+    if _niveau_interdit(eleve, exercice):
         raise HTTPException(status_code=403, detail="Exercice d'un autre niveau")
     with get_db() as db:
         db.execute(
@@ -222,7 +230,7 @@ async def chat_history(request: Request, slug: str):
     exercice = _get_exercice(slug)
     if not exercice:
         raise HTTPException(status_code=404, detail="Exercice inconnu")
-    if exercice["niveau_id"] is not None and exercice["niveau_id"] != eleve["niveau_id"]:
+    if _niveau_interdit(eleve, exercice):
         raise HTTPException(status_code=403, detail="Exercice d'un autre niveau")
 
     with get_db() as db:
@@ -271,7 +279,7 @@ async def chat_endpoint(
     exercice = _get_exercice(slug)
     if not exercice:
         raise HTTPException(status_code=404, detail="Exercice inconnu")
-    if exercice["niveau_id"] is not None and exercice["niveau_id"] != eleve["niveau_id"]:
+    if _niveau_interdit(eleve, exercice):
         raise HTTPException(status_code=403, detail="Exercice d'un autre niveau")
 
     message = (message or "").strip()
