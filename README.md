@@ -61,13 +61,44 @@ Le fichier `.env` est chargé automatiquement par l'application et le CLI
 
 ## CLI enseignant
 
+Toutes les commandes se lancent avec `python cli/manage.py <commande>`.
+Le `.env` est chargé automatiquement — `DATABASE_URL` doit pointer vers la base cible.
+
+### Niveaux et programmes
+
 ```bash
-python cli/manage.py add-niveau 2nd
-python cli/manage.py set-programme 2nd --fichier programme-2nd.txt
-python cli/manage.py add-class 2nd10 --niveau 2nd --annee 2025-2026
-python cli/manage.py sync feuille.tex corrige.tex     # exercices depuis LaTeX
-python cli/manage.py import-eleves 2nd10 eleves.txt  # 1re ligne = niveau
-python cli/manage.py list-students
+python cli/manage.py add-niveau 2nde [--programme "..."]      # créer un niveau
+python cli/manage.py set-programme 2nde (--programme "..." | --fichier programme.txt)
+python cli/manage.py add-chapitre 2nde "Calcul littéral" (--contenu "..." | --fichier chap.txt) [--ordre 1] [--transversal]
+python cli/manage.py import-chapitres 2nde dossier/            # tous les .txt du dossier comme chapitres
+python cli/manage.py list-chapitres                            # niveau, ordre, taille, titre
+python cli/manage.py set-chapitre-exercice ex-pgcd-01 2nde "Calcul littéral"  # rattacher un exo à des chapitres
+```
+
+### Classes et comptes
+
+```bash
+python cli/manage.py add-class 2ndeA --niveau 2nde [--annee 2025-2026]  # créer une classe
+python cli/manage.py list-classes                            # classes, niveaux, années, effectifs
+python cli/manage.py add-student 2ndeA Dupont Marie --login marie.dupont [--password ...]
+python cli/manage.py add-prof 2ndeA Cosyn Thomas --login thomas-prof  # compte prof : accès à TOUS les niveaux
+python cli/manage.py import-eleves 2ndeA eleves.txt         # 1re ligne = niveau, puis "Nom Prénom; F"
+python cli/manage.py reset-password marie.dupont           # génère un mot de passe aléatoire (6 car.)
+python cli/manage.py list-students                         # les profs sont marqués [prof]
+```
+
+### Exercices
+
+```bash
+python cli/manage.py add-exercice 2nde ex-pgcd-01 --titre "PGCD" [--enonce "..." | --fichier-enonce e.tex] [--correction "..." | --fichier-correction c.tex]
+python cli/manage.py sync feuille.tex corrige.tex [--niveau 2nde] [--exo-env exo exercice]  # upsert depuis LaTeX
+python cli/manage.py list-exercices                         # slug, niveau, titre
+```
+
+### Divers
+
+```bash
+python cli/manage.py seed-demo                              # données de démonstration
 ```
 
 ## Workflow LaTeX (source unique, pas de double saisie)
