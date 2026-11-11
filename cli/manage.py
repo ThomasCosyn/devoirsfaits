@@ -216,6 +216,25 @@ def cmd_add_student(args):
     print(f"Élève {args.prenom} {args.nom} créé — login : {args.login}")
 
 
+def cmd_add_prof(args):
+    classe = query_one("SELECT id FROM devoirsfaits.classes WHERE nom = %s", (args.classe,))
+    if not classe:
+        sys.exit(f"Classe {args.classe} inconnue.")
+    exists = query_one("SELECT id FROM devoirsfaits.eleves WHERE login = %s", (args.login,))
+    if exists:
+        sys.exit(f"Login {args.login} déjà pris.")
+    password = args.password or getpass.getpass(f"Mot de passe pour {args.prenom} {args.nom} : ")
+    if len(password) < 4:
+        sys.exit("Mot de passe trop court (min 4 caractères).")
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO devoirsfaits.eleves (classe_id, login, nom, prenom, password_hash, est_prof) "
+            "VALUES (%s, %s, %s, %s, %s, TRUE)",
+            (classe["id"], args.login, args.nom, args.prenom, hash_password(password)),
+        )
+    print(f"Compte prof {args.prenom} {args.nom} créé — login : {args.login} (accès à tous les niveaux)")
+
+
 def _random_password(length: int = 6) -> str:
     alphabet = string.ascii_lowercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(length))
@@ -303,7 +322,7 @@ def cmd_import_eleves(args):
 def cmd_list_students(args):
     rows = query_db(
         """
-        SELECT e.login, e.prenom, e.nom, c.nom AS classe
+        SELECT e.login, e.prenom, e.nom, e.est_prof, c.nom AS classe
         FROM devoirsfaits.eleves e JOIN devoirsfaits.classes c ON c.id = e.classe_id
         ORDER BY c.nom, e.nom
         """
@@ -313,7 +332,7 @@ def cmd_list_students(args):
         return
     print(f"{'LOGIN':<20} {'CLASSE':<8} NOM")
     for r in rows:
-        print(f"{r['login']:<20} {r['classe']:<8} {r['prenom']} {r['nom']}")
+        print(f"{r['login']:<20} {r['classe']:<8} {'[prof] ' if r['est_prof'] else ''}{r['prenom']} {r['nom']}")
 
 
 def cmd_list_exercices(args):
@@ -543,6 +562,14 @@ def main():
     p.add_argument("--login", required=True)
     p.add_argument("--password", help="Sinon, demandé interactivement")
     p.set_defaults(fn=cmd_add_student)
+
+    p = sub.add_parser("add-prof", help="Créer un compte enseignant (accès aux exercices de tous les niveaux)")
+    p.add_argument("classe", help="Classe de rattachement (doit exister)")
+    p.add_argument("nom")
+    p.add_argument("prenom")
+    p.add_argument("--login", required=True)
+    p.add_argument("--password", help="Sinon, demandé interactivement")
+    p.set_defaults(fn=cmd_add_prof)
 
     p = sub.add_parser("reset-password", help="Réinitialiser le mot de passe d'un élève (génère 6 caractères aléatoires)")
     p.add_argument("login")
