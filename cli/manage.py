@@ -319,6 +319,23 @@ def cmd_import_eleves(args):
           f"Mot de passe initial = login (à faire changer).")
 
 
+def cmd_list_classes(args):
+    rows = query_db(
+        """
+        SELECT c.nom, c.annee_scolaire, n.nom AS niveau,
+               (SELECT count(*) FROM devoirsfaits.eleves e WHERE e.classe_id = c.id) AS nb_eleves
+        FROM devoirsfaits.classes c JOIN devoirsfaits.niveaux n ON n.id = c.niveau_id
+        ORDER BY n.nom, c.nom
+        """
+    )
+    if not rows:
+        print("Aucune classe.")
+        return
+    print(f"{'CLASSE':<12} {'NIVEAU':<10} {'ANNÉE':<9} ÉLÈVES")
+    for r in rows:
+        print(f"{r['nom']:<12} {r['niveau']:<10} {r['annee_scolaire']:<9} {r['nb_eleves']}")
+
+
 def cmd_list_students(args):
     rows = query_db(
         """
@@ -578,6 +595,9 @@ def main():
     p.add_argument("classe", help="Classe cible (doit exister)")
     p.add_argument("fichier", help="Fichier eleves.txt (1re ligne = niveau)")
     p.set_defaults(fn=cmd_import_eleves)
+
+    p = sub.add_parser("list-classes", help="Lister les classes")
+    p.set_defaults(fn=cmd_list_classes)
 
     p = sub.add_parser("list-students", help="Lister les élèves")
     p.set_defaults(fn=cmd_list_students)
