@@ -13,12 +13,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import psycopg
+
 from app.db import get_db, init_db, query_one, query_db
 from app.security import hash_password
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from latex_extract import extract_askme, extract_askmecorrection, extract_exo_opt
+from app.sync import DEFAULT_EXO_ENVS, sync_tex_files
 
 
 def cmd_add_niveau(args):
@@ -352,67 +351,70 @@ def cmd_list_exercices(args):
 
 
 def cmd_sync(args):
-    """Synchronise les exercices depuis un ou plusieurs fichiers .tex."""
-    exercices: dict[str, dict] = {}
-    corrections: dict[str, str] = {}
+    """Synchronise les exercices depuis des fichiers .tex (accès direct à la base)."""
+    fichiers = []
     for fichier in args.fichiers:
         if not Path(fichier).exists():
             sys.exit(f"Fichier introuvable : {fichier}")
-        with open(fichier, encoding="utf-8") as f:
-            content = f.read()
-        exos = extract_askme(content)
-        exos += extract_exo_opt(content, env_names=tuple(args.exo_env or ("exo", "exercice", "Exo")))
-        cors = extract_askmecorrection(content)
-        for exo in exos:
-            if exo["slug"] in exercices:
-                continue
-            if not exo.get("niveau") and args.niveau:
-                exo["niveau"] = args.niveau
-            exercices[exo["slug"]] = exo
-        corrections.update(cors)
-
-    if not exercices and not corrections:
-        sys.exit(
-            "Aucun exercice trouvé. Vérifiez que vos exercices utilisent "
-            "\\begin{exo}[slug] ou \\begin{askme}{slug}{titre}{niveau}."
+        fichiers.append((fichier, Path(fichier).read_text(encoding="utf-8")))
+    try:
+        result = sync_tex_files(
+            fichiers,
+            niveau=args.niveau,
+            exo_envs=tuple(args.exo_env or DEFAULT_EXO_ENVS),
         )
+    except psycopg.OperationalError:
+        sys.exit(
+            "Base injoignable depuis ce poste (DATABASE_URL). En architecture "
+            "conteneurisée (base en private network), utilisez plutôt :\n"
+            "  python cli/manage.py sync-remote https://assistant.votredomaine.fr "
+            "feuille.tex corrige.tex --login <compte-prof>"
+        )
+    if result.get("error"):
+        sys.exit(result["error"])
+    for slug in result["ignored"]:
+        print(f"\u26a0 {slug} — ignoré")
+    print(f"Sync terminé : {result['created']} créé(s), {result['updated']} mis à jour.")
 
-    created, updated = 0, 0
-    with get_db() as db:
-        for slug, exo in exercices.items():
-            niveau_id = _resolve_niveau_id(exo["niveau"]) if exo.get("niveau") else None
-            if not niveau_id:
-                print(f"⚠ niveau {exo.get('niveau') or '(manquant — utilisez --niveau)'} inconnu — exo {slug} ignoré (créez-le d'abord)")
-                continue
-            correction = corrections.get(slug, "")
-            existing = query_one(
-                "SELECT id FROM devoirsfaits.exercices WHERE slug = %s", (slug,)
+
+def cmd_sync_remote(args):
+    """Synchronise via l'API du serveur déployé (aucun accès direct à la base requis)."""
+    import httpx
+
+    base = args.url.rstrip("/")
+    fichiers = []
+    for f in args.fichiers:
+        if not Path(f).exists():
+            sys.exit(f"Fichier introuvable : {f}")
+        fichiers.append((Path(f).name, Path(f).read_bytes()))
+    password = args.password or getpass.getpass(f"Mot de passe pour {args.login} : ")
+    with httpx.Client(base_url=base, follow_redirects=True, timeout=120) as client:
+        r = client.post(
+            "/login",
+            data={"login_name": args.login, "password": password, "next": "/e/libre"},
+        )
+        if r.status_code != 200:
+            sys.exit(
+                "Échec de connexion (vérifiez l'URL, le login et le mot de passe "
+                "d'un compte enseignant)."
             )
-            if existing:
-                db.execute(
-                    "UPDATE devoirsfaits.exercices SET niveau_id = %s, titre = %s, "
-                    "enonce = %s, correction = %s WHERE id = %s",
-                    (niveau_id, exo["titre"], exo["enonce"], correction, existing["id"]),
-                )
-                updated += 1
-            else:
-                db.execute(
-                    "INSERT INTO devoirsfaits.exercices (niveau_id, slug, titre, enonce, correction) "
-                    "VALUES (%s, %s, %s, %s, %s)",
-                    (niveau_id, slug, exo["titre"], exo["enonce"], correction),
-                )
-                created += 1
-        for slug, correction in corrections.items():
-            if slug not in exercices:
-                existing = query_one(
-                    "SELECT id, correction FROM devoirsfaits.exercices WHERE slug = %s", (slug,)
-                )
-                if existing and not existing["correction"]:
-                    db.execute(
-                        "UPDATE devoirsfaits.exercices SET correction = %s WHERE id = %s",
-                        (correction, existing["id"]),
-                    )
-    print(f"Sync terminé : {created} créé(s), {updated} mis à jour.")
+        files = [("fichiers", (name, data, "text/plain; charset=utf-8")) for name, data in fichiers]
+        data = {}
+        if args.niveau:
+            data["niveau"] = args.niveau
+        if args.exo_env:
+            data["exo_env"] = args.exo_env
+        r = client.post("/api/sync", files=files, data=data)
+    if r.status_code == 401:
+        sys.exit("Non authentifié.")
+    if r.status_code == 403:
+        sys.exit("Réservé aux comptes enseignants (est_prof).")
+    if r.status_code != 200:
+        sys.exit(f"Erreur {r.status_code} : {r.text[:300]}")
+    res = r.json()
+    for slug in res.get("ignored", []):
+        print(f"\u26a0 {slug} — ignoré")
+    print(f"Sync terminé : {res.get('created', 0)} créé(s), {res.get('updated', 0)} mis à jour.")
 
 
 def cmd_seed_demo(args):
@@ -590,6 +592,15 @@ def main():
     p.add_argument("--niveau", help="Niveau par défaut pour les \\begin{exo}[slug] sans \\askmeniveau")
     p.add_argument("--exo-env", nargs="*", default=[], help="Noms des environnements exo à extraire (défaut : exo exercice Exo)")
     p.set_defaults(fn=cmd_sync)
+
+    p = sub.add_parser("sync-remote", help="Synchroniser via l'API du serveur déployé (compte prof requis, aucun accès direct à la base)")
+    p.add_argument("url", help="URL de l'assistant déployé, ex: https://assistant.votredomaine.fr")
+    p.add_argument("fichiers", nargs="+", help="Fichiers .tex (feuille + corrigé)")
+    p.add_argument("--login", required=True, help="Login d'un compte enseignant")
+    p.add_argument("--password", help="Sinon demandé interactivement")
+    p.add_argument("--niveau", help="Niveau par défaut pour les \\begin{exo}[slug] sans \\askmeniveau")
+    p.add_argument("--exo-env", nargs="*", default=[], help="Noms des environnements exo à extraire (défaut : exo exercice Exo)")
+    p.set_defaults(fn=cmd_sync_remote)
 
     p = sub.add_parser("seed-demo", help="Données de démonstration")
     p.set_defaults(fn=cmd_seed_demo)

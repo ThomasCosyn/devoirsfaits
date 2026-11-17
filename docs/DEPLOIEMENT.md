@@ -107,6 +107,21 @@ python cli/manage.py import-eleves 2nd10 eleves.txt # 1re ligne = niveau
 Workflow type à chaque nouvelle feuille : compiler le PDF (l'icône y est déjà),
 puis `sync` pour mettre à jour la base. Le `.tex` est la source unique.
 
+> **Si votre poste ne peut pas joindre la base** (Managed Database en private network
+> uniquement — c'est le cas dans l'architecture conteneurisée) : la synchro des
+> exercices passe par le serveur déployé, qui lui joint la base. Aucun accès direct
+> à la base n'est nécessaire depuis votre poste pour les `.tex` :
+>
+> ```bash
+> python cli/manage.py sync-remote https://assistant.votredomaine.fr feuille.tex corrige.tex --login <compte-prof>
+> ```
+>
+> L'endpoint `POST /api/sync` est réservé aux comptes enseignants (`est_prof`) :
+> 401 sans session, 403 pour un compte élève. Les autres commandes
+> (`add-niveau`, `add-class`, `add-prof`, `import-eleves`…) ont encore besoin d'un
+> accès direct à la base : gardez l'endpoint public de la Managed Database avec
+> votre IP admin whitelistée, ou exécutez-les depuis un poste attaché au private network.
+
 ## 4. LaTeX
 
 Sur votre machine, copier `latex/askme.sty` à côté de votre feuille (ou dans `texmf`) :

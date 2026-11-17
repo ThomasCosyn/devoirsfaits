@@ -66,6 +66,9 @@ python cli/manage.py add-niveau 2nd
 python cli/manage.py set-programme 2nd --fichier programme-2nd.txt
 python cli/manage.py add-class 2nd10 --niveau 2nd --annee 2025-2026
 python cli/manage.py sync feuille.tex corrige.tex     # exercices depuis LaTeX
+# Base non joignable depuis votre poste (architecture conteneurisée, base en
+# private network) ? La synchro passe par le serveur déployé (compte prof) :
+python cli/manage.py sync-remote https://assistant.votredomaine.fr feuille.tex corrige.tex --login <compte-prof>
 python cli/manage.py import-eleves 2nd10 eleves.txt  # 1re ligne = niveau
 python cli/manage.py list-students
 ```
