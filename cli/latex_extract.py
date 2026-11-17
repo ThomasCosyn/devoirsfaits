@@ -17,9 +17,10 @@ EXO_OPT_RE_TEMPLATE = (
     r"(?P<body>.*?)\\end\{(?P=env)\}"
 )
 
-# Un slug : lettres minuscules (accents inclus), chiffres et tirets.
+# Un slug : commence par une lettre minuscule (accents inclus), puis lettres,
+# chiffres, tirets, underscores et apostrophes (tous sûrs dans une URL /e/<slug>).
 # Un mot commençant par une majuscule est considéré comme un titre, pas un slug.
-SLUG_RE = re.compile(r"^[a-zà-öø-ÿœ][a-zà-öø-ÿœà-ÿ0-9]*(-[a-zà-öø-ÿœà-ÿ0-9]+)*$", re.UNICODE)
+SLUG_RE = re.compile(r"^[a-zà-öø-ÿœ][\w'-]*$", re.UNICODE)
 
 ASKMECORRECTION_RE = re.compile(
     r"\\begin\{askmecorrection\}\{([^}]*)\}(.*?)\\end\{askmecorrection\}",

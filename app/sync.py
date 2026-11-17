@@ -7,6 +7,7 @@ Logique partagée entre :
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -24,6 +25,9 @@ from app.db import get_db, query_one  # noqa: E402
 
 DEFAULT_EXO_ENVS = ("exo", "exercice", "Exo")
 
+# \askmeniveau{2de} dans le .tex : niveau par défaut si --niveau absent.
+_ASKMENIVEAU_RE = re.compile(r"\\askmeniveau\{([^}]*)\}")
+
 
 def _resolve_niveau_id(nom: str | None) -> int | None:
     if not nom:
@@ -37,6 +41,13 @@ def sync_tex_files(
     exo_envs: tuple[str, ...] = DEFAULT_EXO_ENVS,
 ) -> dict:
     """fichiers : liste (nom de fichier, contenu utf-8). Retourne un récapitulatif."""
+    if not niveau:
+        for _nom, content in fichiers:
+            m = _ASKMENIVEAU_RE.search(content)
+            if m:
+                niveau = m.group(1).strip()
+                break
+
     exercices: dict[str, dict] = {}
     corrections: dict[str, str] = {}
     for _nom, content in fichiers:
