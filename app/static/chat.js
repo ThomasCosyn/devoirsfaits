@@ -19,15 +19,24 @@
     chat.scrollTop = chat.scrollHeight;
   });
 
+  const MATH_SEG_RE = /(\$\$[\s\S]*?\$\$|\\\([\s\S]*?\\\)|\$[^$]*\$)/g;
+  const BARE_MATH_TOKEN_RE = /\S*\\(?:left|right|frac|dfrac|tfrac|sqrt|times|cdot|div|pm|mp|leq|le|geq|ge|neq|ne|approx|sim|infty|pi|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|omega|ldots|cdots|dots|rightarrow|leftarrow|Rightarrow|in|notin|subset|subseteq|cup|cap|forall|exists|partial|nabla|deg)\S*/g;
+
   function cleanLatex(text) {
-    if (!/\\(begin|end|item)\b/.test(text)) return text;
-    return text
-      .replace(/\\begin\{multicols\*?\}(?:\{[^}]*\}|\[[^\]]*\])*/g, "\n")
-      .replace(/\\begin\{(?:itemize|enumerate)\}/g, "\n")
-      .replace(/\\end\{(?:multicols\*?|itemize|enumerate)\}/g, "\n")
-      .replace(/\\columnbreak(\[[^\]]*\])?/g, "\n")
-      .replace(/\\item\b/g, "- ")
-      .replace(/^[ \t]+/gm, "");
+    let out = text;
+    if (/\\(begin|end|item)\b/.test(out)) {
+      out = out
+        .replace(/\\begin\{multicols\*?\}(?:\{[^}]*\}|\[[^\]]*\])*/g, "\n")
+        .replace(/\\begin\{(?:itemize|enumerate)\}/g, "\n")
+        .replace(/\\end\{(?:multicols\*?|itemize|enumerate)\}/g, "\n")
+        .replace(/\\columnbreak(\[[^\]]*\])?/g, "\n")
+        .replace(/\\item\b/g, "- ")
+        .replace(/^[ \t]+/gm, "");
+    }
+    return out
+      .split(MATH_SEG_RE)
+      .map((p, i) => (i % 2 === 1 ? p : p.replace(BARE_MATH_TOKEN_RE, (t) => "$" + t + "$")))
+      .join("");
   }
 
   function renderRich(el, text) {
