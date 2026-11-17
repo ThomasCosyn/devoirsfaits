@@ -70,6 +70,15 @@ _BARE_MATH_REPLACEMENTS: list[tuple[str, str]] = [
     (r"\\qquad", "   "),
 ]
 
+# Token (sans espace) contenant une macro mathématique hors $...$ : on l'entoure
+# de $...$ pour que KaTeX le rende au lieu de l'afficher en texte brut.
+_BARE_MATH_TOKEN_RE = re.compile(
+    r"\S*\\(?:left|right|frac|dfrac|tfrac|sqrt|times|cdot|div|pm|mp|leq|le|geq|ge|"
+    r"neq|ne|approx|sim|infty|pi|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|omega|"
+    r"ldots|cdots|dots|rightarrow|leftarrow|Rightarrow|in|notin|subset|subseteq|cup|cap|"
+    r"forall|exists|partial|nabla|deg)\S*"
+)
+
 _SIMPLE_COMMANDS = [
     "noindent", "indent", "smallskip", "medskip", "bigskip", "vspace",
     "hfill", "centering", "newpage", "clearpage", "linebreak", "pagebreak",
@@ -98,13 +107,19 @@ def latex_to_text(tex: str) -> str:
             continue
         for pattern, repl in _LAYOUT_REPLACEMENTS:
             part = re.sub(pattern, repl, part)
-        for pattern, repl in _BARE_MATH_REPLACEMENTS:
-            part = re.sub(pattern, repl, part)
-        for cmd in _SIMPLE_COMMANDS:
-            part = re.sub(r"\\" + cmd + r"\s*(\{[^}]*\})?", "", part)
-        part = re.sub(r"\\href\{[^}]*\}\{([^}]*)\}", r"\1", part)
-        part = re.sub(r"\\url\{([^}]*)\}", r"\1", part)
-        parts[i] = part
+        part = _BARE_MATH_TOKEN_RE.sub(r"$\g<0>$", part)
+        sub = _MATH_SEGMENT_RE.split(part)
+        for j, s in enumerate(sub):
+            if j % 2 == 1:
+                continue
+            for pattern, repl in _BARE_MATH_REPLACEMENTS:
+                s = re.sub(pattern, repl, s)
+            for cmd in _SIMPLE_COMMANDS:
+                s = re.sub(r"\\" + cmd + r"\s*(\{[^}]*\})?", "", s)
+            s = re.sub(r"\\href\{[^}]*\}\{([^}]*)\}", r"\1", s)
+            s = re.sub(r"\\url\{([^}]*)\}", r"\1", s)
+            sub[j] = s
+        parts[i] = "".join(sub)
     out = "".join(parts)
     out = re.sub(r"^[ \t]+", "", out, flags=re.M)
     out = re.sub(r"[ \t]+\n", "\n", out)
