@@ -19,8 +19,19 @@
     chat.scrollTop = chat.scrollHeight;
   });
 
+  function cleanLatex(text) {
+    if (!/\\(begin|end|item)\b/.test(text)) return text;
+    return text
+      .replace(/\\begin\{multicols\*?\}(?:\{[^}]*\}|\[[^\]]*\])*/g, "\n")
+      .replace(/\\begin\{(?:itemize|enumerate)\}/g, "\n")
+      .replace(/\\end\{(?:multicols\*?|itemize|enumerate)\}/g, "\n")
+      .replace(/\\columnbreak(\[[^\]]*\])?/g, "\n")
+      .replace(/\\item\b/g, "- ")
+      .replace(/^[ \t]+/gm, "");
+  }
+
   function renderRich(el, text) {
-    el.innerHTML = marked.parse(text);
+    el.innerHTML = marked.parse(cleanLatex(text));
     el.querySelectorAll("p").forEach((p) => {
       if (!p.textContent.trim()) p.remove();
     });
