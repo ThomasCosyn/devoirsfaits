@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.db import init_db
-from app.routes import auth, chat
+from app.routes import auth, chat, sync
 
 
 @asynccontextmanager
@@ -19,4 +19,5 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(chat.router)
+app.include_router(sync.router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

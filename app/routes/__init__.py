@@ -1,1 +1,1 @@
-from app.routes import auth, chat  # noqa: F401
+from app.routes import auth, chat, sync  # noqa: F401
