@@ -39,6 +39,9 @@ _LAYOUT_REPLACEMENTS: list[tuple[str, str]] = [
     (r"\\item\b", "- "),
     (r"\\begin\{itemize\}|\\begin\{enumerate\}", ""),
     (r"\\end\{itemize\}|\\end\{enumerate\}", ""),
+    (r"\\begin\{multicols\*?\}(?:\{[^}]*\}|\[[^\]]*\])*", "\n"),
+    (r"\\end\{multicols\*?\}", "\n"),
+    (r"\\columnbreak(\[[^\]]*\])?", "\n"),
     (r"~", " "),
 ]
 
