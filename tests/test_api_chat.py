@@ -139,3 +139,7 @@ def test_template_chat_enonce_deplie_par_defaut():
     # barre rapide : uniquement « Un indice » et « Je suis bloqué »
     assert html.count('class="qr') == 2
     assert "Je ne comprends pas" not in html
+    # plus de bandeau header : seg dans la zone de messages + bouton flottant quitter
+    assert "<header" not in html
+    assert 'id="seg"' in html and 'class="fab" id="quit"' in html
+    assert "streakPill" not in html

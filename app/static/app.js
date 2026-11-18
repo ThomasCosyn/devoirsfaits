@@ -23,22 +23,11 @@ function md(src) {
   return marked.parse(src, { breaks: true }).replace(/@@M(\d+)@@/g, (m, i) => store[i]);
 }
 
-/* ---- Série (localStorage, date locale) ---- */
-const day = d => d.toLocaleDateString('sv');
-const readStreak = () => { try { return JSON.parse(localStorage.getItem('exo.streak')) || { count: 0, last: '' }; } catch { return { count: 0, last: '' }; } };
-function showStreak(n) { $('#streak').textContent = n; $('#streakPill').hidden = !n; $('#streakPill').setAttribute('aria-label', `Série de ${n} jour${n > 1 ? 's' : ''}`); }
-function touchStreak() {
-  const s = readStreak(), t = day(new Date()), y = day(new Date(Date.now() - 864e5));
-  if (s.last !== t) { s.count = s.last === y ? s.count + 1 : 1; s.last = t; try { localStorage.setItem('exo.streak', JSON.stringify(s)); } catch {} }
-  showStreak(s.count);
-}
-(() => { const s = readStreak(), y = day(new Date(Date.now() - 864e5)); showStreak(s.last === day(new Date()) || s.last === y ? s.count : 0); })();
-
 /* ---- Étapes : le LLM émet <etape n="2" total="4"/>, le front le lit et le masque ---- */
 function renderStep() {
-  const st = state.step, who = [CTX.eleve, CTX.classe].filter(Boolean).join(' · ');
-  $('#sub').textContent = [st && `Étape ${st.n} sur ${st.total}`, who].filter(Boolean).join(' · ');
-  const seg = $('#seg'); seg.hidden = !st; if (!st) return;
+  const seg = $('#seg'); if (!seg) return;
+  const st = state.step;
+  seg.hidden = !st; if (!st) return;
   seg.setAttribute('aria-label', `Progression : étape ${st.n} sur ${st.total}`);
   seg.innerHTML = Array.from({ length: st.total }, (_, i) => `<i class="${i + 1 < st.n ? 'on' : i + 1 === st.n ? 'cur' : ''}"></i>`).join('');
 }
@@ -106,7 +95,7 @@ function addBot() { const b = el('div', 'bot'), body = el('div'); b.append(body)
 async function send(text) {
   text = (text || '').trim();
   if ((!text && !state.image) || state.busy) return;
-  state.busy = true; setBusy(true); touchStreak();
+  state.busy = true; setBusy(true);
   const img = state.image; clearImage();
   text = text || 'Voici ma photo.';
   addUser(text, img); state.msgs.push({ role: 'user', content: text });
@@ -152,8 +141,7 @@ $('#file').onchange = e => {
   rd.readAsDataURL(f);
 };
 
-/* ---- Énoncé, titre, sortie ---- */
-$('#title').textContent = CTX.titre;
+/* ---- Énoncé, sortie ---- */
 if (CTX.enonce) { $('#stmt').hidden = false; $('#stmtText').innerHTML = md(CTX.enonce); }
 $('#stmtToggle').onclick = e => { const o = $('#stmt').classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded', o); };
 $('#quit').onclick = () => { document.dispatchEvent(new CustomEvent('exo:quitter')); if (history.length > 1) history.back(); else location.href = '/logout'; };
