@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import datetime
 import getpass
+import json
 import re
 import secrets
 import string
@@ -15,9 +17,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import psycopg
 
+from app.config import settings
 from app.db import get_db, init_db, query_one, query_db
 from app.security import hash_password
 from app.sync import DEFAULT_EXO_ENVS, sync_tex_files
+from app.tutor import (
+    build_generation_messages,
+    normalize_generation_payload,
+    validate_generation_payload,
+)
+
 
 
 def cmd_add_niveau(args):
@@ -502,6 +511,161 @@ def cmd_seed_demo(args):
           "et ex-thales-01, élèves lucie.d / hugo.m (mdp : demo1234).")
 
 
+_REPONSE_COLUMNS = (
+    "x.id, x.slug, n.nom AS niveau, x.titre, x.enonce, x.correction, "
+    "x.reponse_finale, x.methode, x.etapes, x.statut"
+)
+
+
+def _reponse_rows(where: str = "", params: tuple = ()) -> list[dict]:
+    sql = (
+        f"SELECT {_REPONSE_COLUMNS} FROM devoirsfaits.exercices x "
+        "JOIN devoirsfaits.niveaux n ON n.id = x.niveau_id"
+    )
+    if where:
+        sql += f" WHERE {where}"
+    sql += " ORDER BY n.nom, x.slug"
+    return query_db(sql, params)
+
+
+def _reponse_dict(r: dict) -> dict:
+    row = dict(r)
+    try:
+        row["etapes"] = json.loads(row["etapes"]) if row.get("etapes") else []
+    except (TypeError, json.JSONDecodeError):
+        row["etapes"] = []
+    return row
+
+
+def cmd_gen_reponses(args):
+    """Génère en lot reponse_finale/methode/etapes via Mistral (statut 'brouillon')."""
+    if not settings.MISTRAL_API_KEY:
+        sys.exit("MISTRAL_API_KEY non configurée (.env).")
+    from openai import OpenAI
+
+    client = OpenAI(api_key=settings.MISTRAL_API_KEY, base_url=settings.MISTRAL_BASE_URL)
+    cond, params = [], []
+    if args.niveau:
+        cond.append("n.nom = %s")
+        params.append(args.niveau)
+    if args.slug:
+        cond.append("x.slug = %s")
+        params.append(args.slug)
+    if not args.force:
+        cond.append("x.reponse_finale IS NULL")
+    rows = _reponse_rows(" AND ".join(cond), tuple(params))
+    if args.limit:
+        rows = rows[: args.limit]
+    if not rows:
+        print("Aucun exercice à traiter.")
+        return
+    ok, ko = 0, 0
+    for r in rows:
+        exo = dict(r)
+        try:
+            resp = client.chat.completions.create(
+                model=args.model,
+                messages=build_generation_messages(exo),
+                temperature=0.2,
+                max_tokens=1200,
+                response_format={"type": "json_object"},
+            )
+            raw = resp.choices[0].message.content or ""
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                m = re.search(r"\{[\s\S]*\}", raw)
+                payload = json.loads(m.group(0)) if m else None
+            if payload is None:
+                raise ValueError("aucun objet JSON dans la réponse du modèle")
+            errors = validate_generation_payload(payload)
+            if errors:
+                print(f"✗ {r['slug']} : {'; '.join(errors)}")
+                ko += 1
+                continue
+            data = normalize_generation_payload(payload)
+            with get_db() as db:
+                db.execute(
+                    "UPDATE devoirsfaits.exercices SET reponse_finale = %s, methode = %s, "
+                    "etapes = %s, statut = 'brouillon' WHERE id = %s",
+                    (data["reponse_finale"], data["methode"], data["etapes"], r["id"]),
+                )
+            print(f"✓ {r['slug']} → brouillon ({len(json.loads(data['etapes']))} étapes)")
+            ok += 1
+        except Exception as e:
+            print(f"✗ {r['slug']} : erreur ({e})")
+            ko += 1
+    print(f"Terminé : {ok} généré(s) en brouillon, {ko} échec(s). "
+          "Relecture humaine requise : export-reponses puis import-reponses.")
+    if args.out and ok:
+        cmd_export_reponses(argparse.Namespace(out=args.out, statut="brouillon"))
+
+
+def cmd_export_reponses(args):
+    """Exporte les réponses de référence (JSON ou CSV) pour relecture humaine."""
+    if args.statut == "all":
+        rows = _reponse_rows()
+    else:
+        rows = _reponse_rows("x.statut = %s", (args.statut,))
+    if not rows:
+        print(f"Aucun exercice au statut '{args.statut}'.")
+        return
+    out = Path(args.out)
+    items = [_reponse_dict(r) for r in rows]
+    if out.suffix.lower() == ".csv":
+        with out.open("w", encoding="utf-8-sig", newline="") as f:
+            w = csv.DictWriter(
+                f,
+                fieldnames=["slug", "niveau", "titre", "enonce", "correction",
+                            "reponse_finale", "methode", "etapes", "statut"],
+                delimiter=";",
+            )
+            w.writeheader()
+            for it in items:
+                it["etapes"] = json.dumps(it["etapes"], ensure_ascii=False)
+                w.writerow(it)
+    else:
+        out.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"{len(items)} exercice(s) exporté(s) vers {out} (statut={args.statut}).")
+
+
+def cmd_import_reponses(args):
+    """Importe un export relu par un humain et passe le statut à 'valide'."""
+    data = json.loads(Path(args.fichier).read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        data = data.get("exercices") or [data]
+    if not isinstance(data, list):
+        sys.exit("Format inattendu : liste d'objets attendue.")
+    ok, ko = 0, 0
+    with get_db() as db:
+        for item in data:
+            slug = (item.get("slug") or "").strip() if isinstance(item, dict) else ""
+            if not slug:
+                print("✗ entrée sans slug ignorée")
+                ko += 1
+                continue
+            errors = validate_generation_payload(item)
+            if item.get("statut") == "valide":
+                errors.append("statut déjà 'valide' dans le fichier (attendu 'brouillon')")
+            if errors:
+                print(f"✗ {slug} : {'; '.join(errors)}")
+                ko += 1
+                continue
+            norm = normalize_generation_payload(item)
+            cur = db.execute(
+                "UPDATE devoirsfaits.exercices SET reponse_finale = %s, methode = %s, "
+                "etapes = %s, statut = 'valide' WHERE slug = %s",
+                (norm["reponse_finale"], norm["methode"], norm["etapes"], slug),
+            )
+            if cur.rowcount == 0:
+                print(f"✗ {slug} : exercice inconnu")
+                ko += 1
+            else:
+                print(f"✓ {slug} → validé")
+                ok += 1
+    print(f"Import terminé : {ok} validé(s), {ko} ignoré(s).")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Gestion exo")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -601,6 +765,24 @@ def main():
     p.add_argument("--niveau", help="Niveau par défaut pour les \\begin{exo}[slug] sans \\askmeniveau")
     p.add_argument("--exo-env", nargs="*", default=[], help="Noms des environnements exo à extraire (défaut : exo exercice Exo)")
     p.set_defaults(fn=cmd_sync_remote)
+
+    p = sub.add_parser("gen-reponses", help="Générer en lot reponse_finale/methode/etapes via Mistral (statut brouillon)")
+    p.add_argument("--niveau", help="Restreindre à un niveau")
+    p.add_argument("--slug", help="Restreindre à un exercice")
+    p.add_argument("--limit", type=int, default=0, help="Nombre max d'exercices traités")
+    p.add_argument("--force", action="store_true", help="Regénérer même si une réponse existe déjà")
+    p.add_argument("--model", default=settings.MISTRAL_MODEL)
+    p.add_argument("--out", help="Exporter aussi les brouillons générés vers ce fichier (JSON/CSV)")
+    p.set_defaults(fn=cmd_gen_reponses)
+
+    p = sub.add_parser("export-reponses", help="Exporter les réponses de référence pour relecture (JSON ou CSV)")
+    p.add_argument("--out", required=True, help="Fichier de sortie (.json ou .csv)")
+    p.add_argument("--statut", default="brouillon", choices=["brouillon", "valide", "all"])
+    p.set_defaults(fn=cmd_export_reponses)
+
+    p = sub.add_parser("import-reponses", help="Importer un export relu par un humain (statut passe à 'valide')")
+    p.add_argument("fichier", help="Fichier JSON exporté puis relu/corrigé")
+    p.set_defaults(fn=cmd_import_reponses)
 
     p = sub.add_parser("seed-demo", help="Données de démonstration")
     p.set_defaults(fn=cmd_seed_demo)

@@ -17,6 +17,15 @@ from app.llm import (
     stream_chat,
     transcribe_image,
 )
+from app.tutor import (
+    ChatRequestIn,
+    build_tutor_api_messages,
+    clamp_indice,
+    generate_reply,
+    make_stream_fn,
+    parse_image_dataurl,
+    sanitize_history,
+)
 from app.routes.auth import get_current_eleve
 
 router = APIRouter()
@@ -39,6 +48,10 @@ def _get_exercice(slug: str):
             "titre": "Exercice libre",
             "enonce": "",
             "correction": "",
+            "reponse_finale": None,
+            "methode": None,
+            "etapes": None,
+            "statut": None,
             "niveau_nom": None,
             "classe_nom": None,
             "annee_scolaire": None,
@@ -46,7 +59,8 @@ def _get_exercice(slug: str):
     exo = query_one(
         """
         SELECT x.id, x.niveau_id, x.slug, x.titre, x.enonce, x.correction,
-               x.chapitre_id, n.nom AS niveau_nom, n.programme
+               x.chapitre_id, x.reponse_finale, x.methode, x.etapes, x.statut,
+               n.nom AS niveau_nom, n.programme
         FROM devoirsfaits.exercices x JOIN devoirsfaits.niveaux n ON n.id = x.niveau_id
         WHERE x.slug = %s
         """,
@@ -143,6 +157,17 @@ def _sse_chunk(data: dict) -> str:
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def _exo_context(eleve, exercice) -> dict:
+    return {
+        "api": "/api/chat",
+        "exercice_id": exercice["slug"],
+        "titre": exercice["titre"],
+        "enonce": exercice.get("enonce") or "",
+        "eleve": eleve.get("prenom") or "",
+        "classe": eleve.get("classe_nom") or "",
+    }
+
+
 @router.get("/e/libre", response_class=HTMLResponse)
 async def exercice_libre_page(request: Request):
     eleve = get_current_eleve(request)
@@ -152,10 +177,15 @@ async def exercice_libre_page(request: Request):
             "login.html",
             {"next": "/e/libre", "error": None},
         )
+    exercice = {"titre": "Exercice libre", "slug": "libre", "enonce": ""}
     return templates.TemplateResponse(
         request,
         "chat.html",
-        {"eleve": dict(eleve), "exercice": {"titre": "Exercice libre", "slug": "libre", "enonce": ""}},
+        {
+            "eleve": dict(eleve),
+            "exercice": exercice,
+            "exo_context": _exo_context(eleve, exercice),
+        },
     )
 
 
@@ -187,7 +217,11 @@ async def exercice_page(request: Request, slug: str):
     return templates.TemplateResponse(
         request,
         "chat.html",
-        {"eleve": dict(eleve), "exercice": dict(exercice)},
+        {
+            "eleve": dict(eleve),
+            "exercice": dict(exercice),
+            "exo_context": _exo_context(eleve, exercice),
+        },
     )
 
 
@@ -264,6 +298,93 @@ async def chat_image(request: Request, slug: str, message_id: int):
     if not row:
         raise HTTPException(status_code=404, detail="Image introuvable")
     return Response(content=row["image"], media_type="image/jpeg")
+
+
+@router.post("/api/chat")
+async def chat_v2_endpoint(request: Request, payload: ChatRequestIn):
+    """Nouveau contrat du front v2 : entrée JSON {messages, image, context}, sortie
+    flux de texte brut (chunked) markdown + LaTeX. Aucune donnée personnelle n'est
+    stockée ni journalisée en clair (ids hachés côté Langfuse, entrée de trace réduite)."""
+    eleve = get_current_eleve(request)
+    if not eleve:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    slug = (payload.context.exercice_id or "").strip() or LIBRE_SLUG
+    exercice = _get_exercice(slug)
+    if not exercice:
+        raise HTTPException(status_code=404, detail="Exercice inconnu")
+    if _niveau_interdit(eleve, exercice):
+        raise HTTPException(status_code=403, detail="Exercice d'un autre niveau")
+
+    niveau_indice = clamp_indice(payload.context.niveau_indice)
+    history = sanitize_history(payload.messages)
+
+    image_dataurl = None
+    image_reçue_mais_illisible = False
+    if payload.image:
+        _mime, raw = parse_image_dataurl(payload.image)
+        if raw is None:
+            image_reçue_mais_illisible = True
+        else:
+            try:
+                image_dataurl = compress_image_to_dataurl(raw)
+            except Exception:
+                logger.warning("image illisible côté serveur (exercice=%s)", slug)
+                image_dataurl = None
+                image_reçue_mais_illisible = True
+
+    if not any(m["content"] for m in history) and not image_dataurl:
+        raise HTTPException(status_code=422, detail="Message vide")
+
+    if image_reçue_mais_illisible and history:
+        history[-1]["content"] = (
+            history[-1]["content"]
+            + "\n\n[Note interne : la photo jointe n'a pas pu être lue. Demande à l'élève de recopier "
+            "son énoncé ou sa ligne de calcul en texte.]"
+        )
+
+    api_messages = build_tutor_api_messages(
+        history, dict(eleve), dict(exercice), niveau_indice, image_dataurl
+    )
+
+    session_hash = hashlib.sha256(
+        f"{eleve['login']}:{exercice['slug'] or 'libre'}".encode()
+    ).hexdigest()[:12]
+    user_hash = hashlib.sha256(eleve["login"].encode()).hexdigest()[:16]
+    tags = ["devoirsfaits-v2", exercice.get("niveau_nom") or "libre", exercice.get("slug") or "libre"]
+    metadata = {
+        "niveau": exercice.get("niveau_nom"),
+        "exercice": exercice.get("slug"),
+        "titre_exercice": exercice.get("titre"),
+        "niveau_indice": niveau_indice,
+        "avec_photo": image_dataurl is not None,
+        "nb_messages": len(history),
+        "statut_exercice": exercice.get("statut"),
+    }
+    stream_fn = make_stream_fn(
+        session_id=f"conv-{session_hash}",
+        user_id=user_hash,
+        tags=tags,
+        metadata=metadata,
+    )
+    reponse_finale = (
+        exercice.get("reponse_finale") if exercice.get("statut") == "valide" else None
+    )
+    reply = await generate_reply(
+        api_messages,
+        stream_fn=stream_fn,
+        reponse_finale=reponse_finale,
+        niveau_indice=niveau_indice,
+    )
+
+    async def text_stream():
+        for i in range(0, len(reply), 160):
+            yield reply[i : i + 160]
+
+    return StreamingResponse(
+        text_stream(),
+        media_type="text/plain; charset=utf-8",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/api/chat/{slug}")

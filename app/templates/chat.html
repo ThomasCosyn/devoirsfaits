@@ -1,58 +1,54 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{{ exercice.titre }} — exo</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/computer-modern@0.1.3/cmu-sans-serif.css">
-  <link rel="stylesheet" href="/static/style.css?v=5">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="/static/styles.css?v=1">
 </head>
-<body class="chat-body">
-<header class="chat-header">
-  <div class="chat-header-info">
-    <strong>{{ exercice.titre }}</strong>
-    <span>{{ eleve.prenom }} · {{ eleve.classe_nom }}</span>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="r1">
+      <button class="ib" id="quit" aria-label="Quitter l'exercice"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="ttl"><b id="title">Exercice</b><small id="sub"></small></div>
+      <div class="pill" id="streakPill" aria-label="Série de jours" hidden><svg class="fl" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/></svg><span id="streak">0</span></div>
+    </div>
+    <div class="seg" id="seg" role="img" hidden></div>
+  </header>
+
+  <main class="msgs" id="msgs" aria-live="polite">
+    <section class="stmt" id="stmt" hidden>
+      <span class="lbl">ÉNONCÉ</span>
+      <div class="t" id="stmtText"></div>
+      <button class="ib sm" id="stmtToggle" aria-expanded="false" aria-label="Afficher l'énoncé complet"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+    </section>
+  </main>
+
+  <div class="quick">
+    <button class="qr h" id="hint"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>Un indice</button>
+    <button class="qr" data-say="Je suis bloqué à une étape.">Je suis bloqué</button>
+    <button class="qr" data-say="Je ne comprends pas l'énoncé.">Je ne comprends pas</button>
   </div>
-  <div class="header-actions">
-    <button type="button" id="reset-chat" class="reset-btn" title="Recommencer la conversation">↺</button>
-    <a href="/logout" class="logout" title="Se déconnecter">⏻</a>
-  </div>
-</header>
 
-<div id="enonce-source" class="hidden">{{ exercice.enonce }}</div>
-
-<main id="chat" class="chat-messages" aria-live="polite"></main>
-
-
-
-<div id="quickstart" class="quickstart hidden">
-  <button data-msg="Je ne comprends pas l'énoncé">Je ne comprends pas l'énoncé</button>
-  <button data-msg="Je suis bloqué à une étape">Je suis bloqué à une étape</button>
-</div>
-
-<form id="chat-form" class="chat-input" autocomplete="off">
-  <div id="photo-preview" class="photo-preview hidden">
-    <img id="photo-preview-img" alt="Image prête à envoyer">
-    <button type="button" id="photo-remove" class="photo-remove" aria-label="Supprimer l'image">✕</button>
-  </div>
-  <div class="composer">
-    <textarea id="msg" name="message" rows="1" placeholder="Écris ta question…" enterkeyhint="send"></textarea>
-    <div class="composer-actions">
-      <label class="photo-btn" title="Envoyer une photo de ton cahier">
-        <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" capture="environment">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4"/><path fill="currentColor" d="M9 2 7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2zm3 15.2A5.2 5.2 0 1 1 12 6.8a5.2 5.2 0 0 1 0 10.4"/></svg>
-      </label>
-      <button type="submit" id="send" aria-label="Envoyer">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M2 21 23 12 2 3v7l15 2-15 2z"/></svg>
-      </button>
+  <div class="comp">
+    <div class="att" id="att" hidden><img id="attImg" alt="Photo jointe"><button class="x" id="attX" aria-label="Retirer la photo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="box">
+      <button class="ib" id="photo" aria-label="Ajouter une photo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+      <input type="file" id="file" accept="image/*" hidden>
+      <textarea id="input" rows="1" aria-label="Ta réponse" placeholder="Écris ta réponse…"></textarea>
+      <button class="send" id="send" aria-label="Envoyer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
     </div>
   </div>
-</form>
+</div>
 
-<script src="/static/chat.js?v=8"></script>
+<script>window.EXO_CONTEXT = {{ exo_context | tojson }};</script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="/static/app.js?v=1"></script>
 </body>
 </html>

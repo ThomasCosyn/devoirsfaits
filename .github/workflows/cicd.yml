@@ -33,6 +33,11 @@ jobs:
           SECRET_KEY: ci-dummy
         run: python -c "import app.main; import app.llm; import app.routes.chat; print('imports ok')"
 
+      - name: Tests unitaires
+        run: |
+          pip install -q pytest
+          python -m pytest tests -q
+
       - name: Vérifier la syntaxe JS
         run: |
           for f in app/static/*.js; do node --check "$f"; done
