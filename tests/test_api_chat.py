@@ -121,3 +121,18 @@ def test_icones_pwa_presentes():
     for path in ("/static/icons/icon-192.png", "/static/icons/icon-512.png", "/static/icons/apple-touch-icon.png"):
         r = client.get(path)
         assert r.status_code == 200 and r.content[:8] == b"\x89PNG\r\n\x1a\n", path
+
+
+def test_template_chat_enonce_deplie_par_defaut():
+    from jinja2 import Environment, FileSystemLoader
+
+    env = Environment(loader=FileSystemLoader("app/templates"))
+    html = env.get_template("chat.html").render(
+        exercice={"titre": "T", "slug": "ex-1", "enonce": "énoncé"},
+        eleve={"prenom": "Léa", "classe_nom": "3A"},
+        exo_context={"api": "/api/chat", "exercice_id": "ex-1", "titre": "T", "enonce": "énoncé", "eleve": "Léa", "classe": "3A"},
+    )
+    assert 'class="stmt open"' in html
+    assert 'id="stmtToggle" aria-expanded="true"' in html
+    assert "manifest.webmanifest" in html
+    assert "serviceWorker.register('/sw.js')" in html
