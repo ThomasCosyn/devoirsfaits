@@ -124,6 +124,15 @@ _MIGRATIONS = (
     $$
     """,
     "ALTER TABLE devoirsfaits.eleves ADD COLUMN IF NOT EXISTS est_prof BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE devoirsfaits.exercices ADD COLUMN IF NOT EXISTS reponse_finale TEXT",
+    "ALTER TABLE devoirsfaits.exercices ADD COLUMN IF NOT EXISTS methode TEXT",
+    "ALTER TABLE devoirsfaits.exercices ADD COLUMN IF NOT EXISTS etapes TEXT",
+    "ALTER TABLE devoirsfaits.exercices ADD COLUMN IF NOT EXISTS statut TEXT NOT NULL DEFAULT 'brouillon' "
+    "CHECK (statut IN ('brouillon', 'valide'))",
+    # Les exercices synchronisés depuis un corrigé enseignant (correction non vide,
+    # pas encore de réponse structurée) sont considérés comme validés par l'enseignant.
+    "UPDATE devoirsfaits.exercices SET statut = 'valide' "
+    "WHERE statut = 'brouillon' AND reponse_finale IS NULL AND correction <> ''",
     """
     DO $$
     BEGIN

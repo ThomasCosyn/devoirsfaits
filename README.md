@@ -28,14 +28,17 @@ app/
   db.py             Postgres (pool psycopg, schéma dédié)
   security.py       Sessions signées, hash bcrypt
   llm.py            Client Mistral + système prompt pédagogique + propagate_attributes Langfuse
+  tutor.py          Tuteur v2 : API POST /api/chat (stream texte brut), blocs brouillon/étape,
+                    niveaux d'indice, anti-fuite, génération des réponses de référence
   langfuse_ext.py   Init Langfuse
   routes/
     auth.py         Login/logout
     chat.py         Chat streaming SSE + upload photo
-  templates/        HTML mobile-first (Jinja2)
-  static/           CSS/JS minimal
+  templates/        HTML mobile-first (Jinja2) — chat.html (front v2), chat-legacy.html (ancien front)
+  static/           CSS/JS minimal (styles.css/app.js = front v2, style.css/chat.js = legacy)
 cli/
-  manage.py         CLI enseignant : élèves, classes, exercices, programmes
+  manage.py         CLI enseignant : élèves, classes, exercices, programmes, réponses de référence
+tests/              Tests unitaires (pytest) : `pip install -r requirements-dev.txt && pytest`
 latex/
   askme.sty         Package LaTeX : \askme{id-exercice}
   exemple.tex       Feuille d'exercices d'exemple
@@ -72,6 +75,36 @@ python cli/manage.py sync-remote https://assistant.votredomaine.fr feuille.tex c
 python cli/manage.py import-eleves 2nd10 eleves.txt  # 1re ligne = niveau
 python cli/manage.py list-students
 ```
+
+### Réponses de référence structurées (tuteur v2)
+
+Chaque exercice peut porter `reponse_finale`, `methode`, `etapes` (2 à 5 titres) et un
+`statut` (`brouillon` | `valide`). Un exercice au statut `brouillon` n'est **jamais**
+utilisé comme vérité en prod : le prompt demande alors au tuteur de rester prudent.
+
+```bash
+python cli/manage.py gen-reponses [--niveau 2nde] [--limit 20] [--out reponses.json]
+#   → génère les champs via Mistral, statut 'brouillon'
+python cli/manage.py export-reponses --out reponses.csv   # relecture humaine (JSON ou CSV)
+python cli/manage.py import-reponses reponses.json        # après relecture → statut 'valide'
+```
+
+## API v2 (front chat.html)
+
+`POST /api/chat` — entrée JSON :
+
+```json
+{ "messages": [{"role": "user|assistant", "content": "..."}],
+  "image": "data:image/...;base64,... ou null",
+  "context": {"exercice_id": "ex-pgcd-01", "niveau_indice": 0, "eleve": "...", "classe": "..."} }
+```
+
+Sortie : flux de **texte brut** (chunked, `text/plain`) markdown + LaTeX, avec balise
+`<etape n=".." total=".."/>` en tête de chaque réponse et blocs interactifs
+` ```brouillon {json}``` `. `niveau_indice` : 0 = socratique, 1 = notion, 2 = méthode,
+3 = première étape faite. L'ancien endpoint SSE `POST /api/chat/{slug}` reste fonctionnel
+(front legacy). Aucun contenu de message n'est stocké ni journalisé en clair côté serveur
+(traces Langfuse réduites aux métadonnées, ids hachés).
 
 ## Workflow LaTeX (source unique, pas de double saisie)
 
