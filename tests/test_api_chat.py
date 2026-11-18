@@ -94,3 +94,30 @@ def test_post_api_chat_autre_niveau_403(monkeypatch):
         "context": {"exercice_id": "ex-1"},
     })
     assert r.status_code == 403
+
+
+def test_sw_js_servi_avec_scope_racine():
+    client = TestClient(app)
+    r = client.get("/sw.js")
+    assert r.status_code == 200
+    assert r.headers["service-worker-allowed"] == "/"
+    assert "serviceWorker" not in r.text  # le fichier lui-même, pas la page
+    assert "addEventListener('fetch'" in r.text
+
+
+def test_manifest_pwa_complet():
+    client = TestClient(app)
+    r = client.get("/static/manifest.webmanifest")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["display"] == "standalone"
+    assert data["start_url"] == "/"
+    sizes = {i["sizes"] for i in data["icons"]}
+    assert "192x192" in sizes and "512x512" in sizes
+
+
+def test_icones_pwa_presentes():
+    client = TestClient(app)
+    for path in ("/static/icons/icon-192.png", "/static/icons/icon-512.png", "/static/icons/apple-touch-icon.png"):
+        r = client.get(path)
+        assert r.status_code == 200 and r.content[:8] == b"\x89PNG\r\n\x1a\n", path
