@@ -94,3 +94,52 @@ def test_post_api_chat_autre_niveau_403(monkeypatch):
         "context": {"exercice_id": "ex-1"},
     })
     assert r.status_code == 403
+
+
+def test_sw_js_servi_avec_scope_racine():
+    client = TestClient(app)
+    r = client.get("/sw.js")
+    assert r.status_code == 200
+    assert r.headers["service-worker-allowed"] == "/"
+    assert "serviceWorker" not in r.text  # le fichier lui-même, pas la page
+    assert "addEventListener('fetch'" in r.text
+
+
+def test_manifest_pwa_complet():
+    client = TestClient(app)
+    r = client.get("/static/manifest.webmanifest")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["display"] == "standalone"
+    assert data["start_url"] == "/"
+    sizes = {i["sizes"] for i in data["icons"]}
+    assert "192x192" in sizes and "512x512" in sizes
+
+
+def test_icones_pwa_presentes():
+    client = TestClient(app)
+    for path in ("/static/icons/icon-192.png", "/static/icons/icon-512.png", "/static/icons/apple-touch-icon.png"):
+        r = client.get(path)
+        assert r.status_code == 200 and r.content[:8] == b"\x89PNG\r\n\x1a\n", path
+
+
+def test_template_chat_enonce_deplie_par_defaut():
+    from jinja2 import Environment, FileSystemLoader
+
+    env = Environment(loader=FileSystemLoader("app/templates"))
+    html = env.get_template("chat.html").render(
+        exercice={"titre": "T", "slug": "ex-1", "enonce": "énoncé"},
+        eleve={"prenom": "Léa", "classe_nom": "3A"},
+        exo_context={"api": "/api/chat", "exercice_id": "ex-1", "titre": "T", "enonce": "énoncé", "eleve": "Léa", "classe": "3A"},
+    )
+    assert 'class="stmt open"' in html
+    assert 'id="stmtToggle" aria-expanded="true"' in html
+    assert "manifest.webmanifest" in html
+    assert "serviceWorker.register('/sw.js')" in html
+    # barre rapide : uniquement « Un indice » et « Je suis bloqué »
+    assert html.count('class="qr') == 2
+    assert "Je ne comprends pas" not in html
+    # plus de bandeau header : seg dans la zone de messages + bouton flottant quitter
+    assert "<header" not in html
+    assert 'id="seg"' in html and 'class="fab" id="quit"' in html
+    assert "streakPill" not in html
