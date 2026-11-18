@@ -14,12 +14,42 @@ const CHECK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" strok
 
 /* ---- Maths + markdown (HTML du LLM échappé, formules rendues par KaTeX) ---- */
 const tex = (s, d) => { try { return katex.renderToString(s, { displayMode: !!d, throwOnError: false }); } catch { return s.replace(/</g, '&lt;'); } };
+
+/* ---- LaTeX de mise en page -> markdown (tabular -> tableau, center, itemize...) ---- */
+function tabularToMd(body) {
+  body = body.replace(/\\\\(?:\[[^\]]*\])?/g, '\n').replace(/\\*hline\b/g, '');
+  const rows = body.split('\n').map(r => r.trim()).filter(Boolean)
+    .map(r => { const c = r.split('&').map(x => x.trim()); if (c.length && c[c.length - 1] === '') c.pop(); return c; })
+    .filter(r => r.length);
+  if (!rows.length) return '';
+  const n = Math.max(...rows.map(r => r.length));
+  const line = r => '| ' + r.concat(Array(n - r.length).fill('')).join(' | ') + ' |';
+  return '\n' + [line(rows[0]), '|' + Array(n).fill(' --- ').join('|') + '|'].concat(rows.slice(1).map(line)).join('\n') + '\n';
+}
+function cleanLatex(src) {
+  src = src.replace(/\\begin\{tabular\*?\}\s*\{(?:[^{}]|\{[^{}]*\})*\}([\s\S]*?)\\end\{tabular\*?\}/gi, (m, body) => tabularToMd(body));
+  return src
+    .replace(/\\begin\{center\}|\\end\{center\}/gi, '\n')
+    .replace(/\\%/g, '%')
+    .replace(/\{,\}/g, ',')
+    .replace(/\\begin\{multicols\*?\}(?:\{[^}]*\}|\[[^\]]*\])*/gi, '\n')
+    .replace(/\\begin\{(?:itemize|enumerate)\}/gi, '\n')
+    .replace(/\\end\{(?:multicols\*?|itemize|enumerate)\}/gi, '\n')
+    .replace(/\\columnbreak(\[[^\]]*\])?/gi, '\n')
+    .replace(/\\item\b/g, '- ')
+    .replace(/\\\\(?:\[[^\]]*\])?/g, '\n')
+    .replace(/^[ \t]+/gm, '');
+}
+const MATH_SEG_RE = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$)/g;
+const BARE_MATH_TOKEN_RE = /\S*\\(?:left|right|frac|dfrac|tfrac|sqrt|times|cdot|div|pm|mp|leq|le|geq|ge|neq|ne|approx|sim|infty|pi|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|omega|ldots|cdots|dots|rightarrow|leftarrow|Rightarrow|in|notin|subset|subseteq|cup|cap|forall|exists|partial|nabla|deg)\S*/g;
 function md(src) {
+  src = cleanLatex(src);
   const store = [];
   const keep = d => (m, s) => `@@M${store.push(tex(s, d)) - 1}@@`;
   src = src.replace(/\$\$([\s\S]+?)\$\$/g, keep(true)).replace(/\\\[([\s\S]+?)\\\]/g, keep(true))
            .replace(/\\\(([\s\S]+?)\\\)/g, keep(false)).replace(/\$([^$\n]+?)\$/g, keep(false));
   src = src.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  src = src.split(MATH_SEG_RE).map((p, i) => (i % 2 === 1 ? p : p.replace(BARE_MATH_TOKEN_RE, t => '$' + t + '$'))).join('');
   return marked.parse(src, { breaks: true }).replace(/@@M(\d+)@@/g, (m, i) => store[i]);
 }
 
