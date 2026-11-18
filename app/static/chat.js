@@ -21,6 +21,24 @@
 
   const MATH_SEG_RE = /(\$\$[\s\S]*?\$\$|\\\([\s\S]*?\\\)|\$[^$]*\$)/g;
   const BARE_MATH_TOKEN_RE = /\S*\\(?:left|right|frac|dfrac|tfrac|sqrt|times|cdot|div|pm|mp|leq|le|geq|ge|neq|ne|approx|sim|infty|pi|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|omega|ldots|cdots|dots|rightarrow|leftarrow|Rightarrow|in|notin|subset|subseteq|cup|cap|forall|exists|partial|nabla|deg)\S*/g;
+  const PLAIN_MATH_CHARS_RE = /^[A-Za-z0-9à-ÿÀ-Þ().,;=\[\]<>\s+\-*/^|]+$/;
+
+  // Puce/numéro dont le contenu ressemble à une expression math en texte brut
+  // (ex. "- 3 (1/4 + x) - 1/4") : on l'enveloppe dans $...$ pour KaTeX.
+  // Exclus : tout contenu avec $, \, ou un caractère hors maths (ex. ":").
+  function wrapPlainMathLine(line) {
+    const m = line.match(/^(\s*(?:[-*•]|\d+\.)\s+)(.*)$/);
+    if (!m || m[2].includes("$") || m[2].includes("\\")) return line;
+    const body = m[2];
+    if (!PLAIN_MATH_CHARS_RE.test(body)) return line;
+    const compact = body.replace(/\s+/g, "");
+    const hasLetter = /[A-Za-zà-ÿÀ-Þ]/.test(compact);
+    const hasDigit = /\d/.test(compact);
+    const ops = compact.match(/[+\-*/=<>^]/g) || [];
+    const mathy = hasDigit && ops.length >= 1 && (hasLetter || body.includes("(") || ops.length >= 2);
+    if (mathy) return m[1] + "$" + body.trim() + "$";
+    return line;
+  }
 
   function cleanLatex(text) {
     let out = text;
@@ -35,7 +53,11 @@
     }
     return out
       .split(MATH_SEG_RE)
-      .map((p, i) => (i % 2 === 1 ? p : p.replace(BARE_MATH_TOKEN_RE, (t) => "$" + t + "$")))
+      .map((p, i) => {
+        if (i % 2 === 1) return p;
+        p = p.replace(BARE_MATH_TOKEN_RE, (t) => "$" + t + "$");
+        return p.split("\n").map(wrapPlainMathLine).join("\n");
+      })
       .join("");
   }
 
