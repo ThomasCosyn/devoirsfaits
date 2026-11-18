@@ -136,3 +136,6 @@ def test_template_chat_enonce_deplie_par_defaut():
     assert 'id="stmtToggle" aria-expanded="true"' in html
     assert "manifest.webmanifest" in html
     assert "serviceWorker.register('/sw.js')" in html
+    # barre rapide : uniquement « Un indice » et « Je suis bloqué »
+    assert html.count('class="qr') == 2
+    assert "Je ne comprends pas" not in html
