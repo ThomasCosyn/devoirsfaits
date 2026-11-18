@@ -21,7 +21,10 @@ button,textarea,input{font:inherit;color:inherit}
 .lbl{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--accent-2);background:var(--slot);padding:3px 8px;border-radius:99px;margin-top:4px}
 .user{align-self:flex-end;max-width:80%;background:var(--bubble-user);color:var(--bubble-user-ink);padding:10px 15px;border-radius:20px;border-bottom-right-radius:5px;box-shadow:0 4px 14px rgba(23,64,46,.25);white-space:pre-wrap;overflow-wrap:anywhere}
 .user img{display:block;max-width:100%;border-radius:12px;margin-bottom:6px}
-.bot p,.bot ul,.bot ol{margin:0 0 10px}.bot ul,.bot ol{padding-left:22px}.bot li{margin-bottom:4px}.bot>div:last-child>*:last-child{margin-bottom:0}
+.bot p,.bot ul,.bot ol{margin:0 0 10px}.bot ul,.bot ol{padding-left:22px}.bot li{margin-bottom:4px}
+.msgs table{border-collapse:collapse;margin:0 0 10px;font-size:.92em;max-width:100%;overflow-x:auto;display:block}
+.msgs th,.msgs td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+.msgs th{background:var(--slot);font-weight:700}.bot>div:last-child>*:last-child{margin-bottom:0}
 .bot .katex{font-size:1.08em}.bot .katex-display{margin:.6em 0;overflow-x:auto;overflow-y:hidden}
 .err{color:var(--danger)}
 .cur{display:inline-block;width:3px;height:1.05em;background:var(--accent-2);border-radius:2px;vertical-align:-3px;margin-left:2px}

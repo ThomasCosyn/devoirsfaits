@@ -32,11 +32,14 @@ _MATH_SEGMENT_RE = re.compile(r"(\$\$.*?\$\$|\$[^$]*\$)", re.S)
 # Nettoyage du LaTeX de mise en page, appliqué hors des segments math.
 _LAYOUT_REPLACEMENTS: list[tuple[str, str]] = [
     (r"\\par\b", "\n"),
+    (r"\\begin\{center\}|\\end\{center\}", "\n"),
+    (r"\\%", "%"),
+    (r"\{,\}", ","),
     (r"\\\\", "\n"),
     (r"\\textbf\{([^{}]*)\}", r"\1"),
     (r"\\textit\{([^{}]*)\}", r"\1"),
     (r"\\text\{([^{}]*)\}", r"\1"),
-    (r"\\item\b", "- "),
+    (r"\\item\s+", "- "),
     (r"\\begin\{itemize\}|\\begin\{enumerate\}", ""),
     (r"\\end\{itemize\}|\\end\{enumerate\}", ""),
     (r"\\begin\{multicols\*?\}(?:\{[^}]*\}|\[[^\]]*\])*", "\n"),
@@ -72,6 +75,39 @@ _BARE_MATH_REPLACEMENTS: list[tuple[str, str]] = [
 
 # Token (sans espace) contenant une macro mathématique hors $...$ : on l'entoure
 # de $...$ pour que KaTeX le rende au lieu de l'afficher en texte brut.
+_TABULAR_RE = re.compile(
+    r"\\begin\{tabular\*?\}\s*\{(?:[^{}]|\{[^{}]*\})*\}(.*?)\\end\{tabular\*?\}",
+    re.S | re.I,
+)
+
+
+def _tabular_to_markdown(body: str) -> str:
+    """Convertit un corps de tabular en tableau markdown (1re ligne = en-tête)."""
+    body = re.sub(r"\\\\(?:\[[^\]]*\])?", "\n", body)  # séparateurs de ligne \\
+    body = re.sub(r"\\*hline\b", "", body)
+    rows = []
+    for line in body.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        cells = [c.strip() for c in line.split("&")]
+        if cells and cells[-1] == "":
+            cells.pop()
+        if cells:
+            rows.append(cells)
+    if not rows:
+        return ""
+    width = max(len(r) for r in rows)
+
+    def md_line(cells: list[str]) -> str:
+        cells = cells + [""] * (width - len(cells))
+        return "| " + " | ".join(cells) + " |"
+
+    out = [md_line(rows[0]), "|" + "|".join([" --- "] * width) + "|"]
+    out += [md_line(r) for r in rows[1:]]
+    return "\n" + "\n".join(out) + "\n"
+
+
 _BARE_MATH_TOKEN_RE = re.compile(
     r"\S*\\(?:left|right|frac|dfrac|tfrac|sqrt|times|cdot|div|pm|mp|leq|le|geq|ge|"
     r"neq|ne|approx|sim|infty|pi|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|omega|"
@@ -105,6 +141,7 @@ def latex_to_text(tex: str) -> str:
     for i, part in enumerate(parts):
         if i % 2 == 1:
             continue
+        part = _TABULAR_RE.sub(lambda m: _tabular_to_markdown(m.group(1)), part)
         for pattern, repl in _LAYOUT_REPLACEMENTS:
             part = re.sub(pattern, repl, part)
         part = _BARE_MATH_TOKEN_RE.sub(r"$\g<0>$", part)
