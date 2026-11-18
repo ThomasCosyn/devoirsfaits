@@ -39,7 +39,7 @@ _LAYOUT_REPLACEMENTS: list[tuple[str, str]] = [
     (r"\\textbf\{([^{}]*)\}", r"\1"),
     (r"\\textit\{([^{}]*)\}", r"\1"),
     (r"\\text\{([^{}]*)\}", r"\1"),
-    (r"\\item\b", "- "),
+    (r"\\item\s+", "- "),
     (r"\\begin\{itemize\}|\\begin\{enumerate\}", ""),
     (r"\\end\{itemize\}|\\end\{enumerate\}", ""),
     (r"\\begin\{multicols\*?\}(?:\{[^}]*\}|\[[^\]]*\])*", "\n"),
