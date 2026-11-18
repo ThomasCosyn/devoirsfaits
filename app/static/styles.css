@@ -27,10 +27,9 @@ button,textarea,input{font:inherit;color:inherit}
 .bot p,.bot ul,.bot ol{margin:0 0 10px}.bot ul,.bot ol{padding-left:22px}.bot li{margin-bottom:4px}.bot>div:last-child>*:last-child{margin-bottom:0}
 .bot .katex{font-size:1.08em}.bot .katex-display{margin:.6em 0;overflow-x:auto;overflow-y:hidden}
 .err{color:var(--danger)}
-.cur{display:inline-block;width:3px;height:1.05em;background:var(--accent-2);border-radius:2px;vertical-align:-3px;margin-left:2px;animation:blink 1s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
-.dots{display:flex;gap:5px;padding:8px 0}.dots i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:dot 1.2s infinite}.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
-@keyframes dot{0%,60%,100%{opacity:.3}30%{opacity:1}}
+.cur{display:inline-block;width:3px;height:1.05em;background:var(--accent-2);border-radius:2px;vertical-align:-3px;margin-left:2px}
+.dots{display:flex;gap:5px;padding:8px 0}.dots i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:dot 1.8s ease-in-out infinite}.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,60%,100%{opacity:.25;transform:scale(.85)}30%{opacity:.7;transform:scale(1)}}
 
 .pad{background:var(--sheet);border:1px solid var(--line);border-radius:18px;padding:12px 14px;box-shadow:0 6px 20px rgba(20,32,26,.08);margin:0 0 10px}
 .pad h4{margin:0 0 8px;font:700 12px Figtree,sans-serif;letter-spacing:.08em;color:var(--muted)}
@@ -38,10 +37,9 @@ button,textarea,input{font:inherit;color:inherit}
 .ln>.ok,.ln>.sp{flex:none;width:22px;height:22px;margin-right:2px}
 .ok{border-radius:50%;background:var(--accent-2);color:#fff;display:grid;place-items:center}
 .lock{opacity:.45;pointer-events:none}
-.slot{width:48px;height:34px;text-align:center;border:2px dashed var(--accent-2);border-radius:10px;background:var(--slot);color:var(--ink);font-size:18px;font-weight:600;padding:0;animation:pulse 1.8s ease-in-out infinite}
-.slot:focus{border-style:solid;background:var(--card);animation:none}
-.slot:disabled{animation:none;border-style:solid;opacity:.8}
-@keyframes pulse{50%{box-shadow:0 0 0 5px rgba(31,122,80,.16)}}
+.slot{width:48px;height:34px;text-align:center;border:2px dashed var(--accent-2);border-radius:10px;background:var(--slot);color:var(--ink);font-size:18px;font-weight:600;padding:0}
+.slot:focus{border-style:solid;background:var(--card)}
+.slot:disabled{border-style:solid;opacity:.8}
 .tb{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));border:2px solid var(--ink);border-radius:12px;overflow:hidden;font-size:18px}
 .tr{display:contents}
 .tb .c{min-height:44px;display:flex;align-items:center;justify-content:center;gap:4px;padding:2px 4px;border-top:1px solid var(--muted);text-align:center}
